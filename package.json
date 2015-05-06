@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Accessible game development, powered by genetic programming",
   "dependencies": {
+    "babel": "^5.2.15",
     "lodash": "^3.8.0"
   }
 }

@@ -1,0 +1,21 @@
+* Entity: type of thing in the game world (e.g. player, goblin)
+* Individual: A function that is executed as an Entity's update logic. Randomly generated/evolves
+* Generation: A collection of individuals
+* Fitness Scenario: A user created scenario describing how entities behave. Used to check the correctness of an individual
+* Seeder: Creates random individuals
+* Breeder: Takes two indivduals and returns two children
+* Mutator: Mutates a given indivdual
+
+Program flow:
+
+  Given a fitness scenario with an entity
+
+  An initial generation of individuals is created
+
+  loop over the following for x generations
+    The game is simulated, and after a certain period, the individuals are evaluted for fitness
+    The fittest individuals in a population are bred to create a new generation
+    A small percentage of the new generation is mutated
+
+
+
