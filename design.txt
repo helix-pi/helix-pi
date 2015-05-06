@@ -6,6 +6,7 @@
 * Seeder: Creates random individuals
 * Breeder: Takes two indivduals and returns two children
 * Mutator: Mutates a given indivdual
+* Helix: put it all together
 
 Program flow:
 
