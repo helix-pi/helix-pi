@@ -1,3 +1,4 @@
+* World: contains entities
 * Entity: type of thing in the game world (e.g. player, goblin)
 * Individual: A function that is executed as an Entity's update logic. Randomly generated/evolves
 * Generation: A collection of individuals

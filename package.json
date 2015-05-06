@@ -5,5 +5,8 @@
   "dependencies": {
     "babel": "^5.2.15",
     "lodash": "^3.8.0"
+  },
+  "scripts": {
+    "test": "mocha --compilers js:babel/register"
   }
 }
