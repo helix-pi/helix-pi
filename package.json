@@ -1,0 +1,8 @@
+{
+  "name": "helix-pi",
+  "version": "0.0.1",
+  "description": "Accessible game development, powered by genetic programming",
+  "dependencies": {
+    "lodash": "^3.8.0"
+  }
+}
