@@ -7,11 +7,12 @@ var simulateWorld = require('./app/simulator');
 
 var _ = require('lodash');
 
-Array.prototype.eachSlice = function (size, callback){
-  for (var i = 0, l = this.length; i < l; i += size){
-    callback.call(this, this.slice(i, i + size));
-  }
+var eachSlice = function(array, sizeOfSlice) {
+  return _.chain(array).groupBy((item, index) => {
+    Math.floor(index / sizeOfSlice);
+  }).toArray().value();
 };
+
 
 var fitnessScenario = {
   startingPosition() {
@@ -22,8 +23,8 @@ var fitnessScenario = {
   },
 
   expectedEndPosition: {
-    x: 200,
-    y: 100,
+    x: 1000,
+    y: -100,
   },
 
   duration: 60,
@@ -58,13 +59,11 @@ function run(generations=100, population=32) {
     var fittestIndividuals = entities
       .map(e => e.individual)
       .sort((a, b) => fitness[b] - fitness[a])
+      .slice(0, population / 2);
    
-    var breedingPairs = _.zip(
-      fittestIndividuals.slice(0, 8),
-      fittestIndividuals.slice(8, 16)
-    );
-
-    newbornIndividuals = _.flatten(breedingPairs.map(pair => breed(pair[0], pair[1])))
+    var breedingPairs = eachSlice(fittestIndividuals, 2)
+      .concat(eachSlice(_.shuffle(fittestIndividuals), 2));
+    newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
   })
 
   return entities.map(function (entity) {
