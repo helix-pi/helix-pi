@@ -1,19 +1,12 @@
 function breed(mum, dad) {
-  var totalGenes = mum.children.length + dad.children.length;
+  var totalGenes = mum.length + dad.length;
 
-  var genes = mum.children.concat(dad.children);
+  var genes = mum.concat(dad);
   var midPoint = Math.floor(totalGenes / 2);
 
   return [
-    {
-      nodeType: 'root',
-      children: genes.slice(0, midPoint)
-    },
-
-    {
-      nodeType: 'root',
-      children: genes.slice(midPoint)
-    }
+    genes.slice(0, midPoint),
+    genes.slice(midPoint)
   ];
 }
 

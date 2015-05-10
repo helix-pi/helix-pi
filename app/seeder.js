@@ -13,30 +13,20 @@ function findNodeToAddTo(individual) {
 
 
 function newNode() {
-  return {
-    nodeType: 'api',
-    apiCall: 'move',
-    args: [{
+  return (function(api) {
+    api.move({
       x: getRandomInt(-10, 10),
       y: getRandomInt(-10, 10),
-    }],
-  };
+    });
+  });
 }
 
 function generateIndividual() {
-  var individual = {
-    nodeType: 'root',
-    children: [],
-  };
+  var entropy = getRandomInt(1, 10);
 
-  var numberOfThingsToAdd = getRandomInt(1, 10);
-
-  _.times(numberOfThingsToAdd, () => {
-    var nodeToAddTo = findNodeToAddTo(individual);
-    nodeToAddTo.children.push(newNode());
-  });
-
-  return individual;
+  return _.chain(entropy).range().map(function() {
+    return newNode();
+  }).value();
 }
 
 var Seeder = {
