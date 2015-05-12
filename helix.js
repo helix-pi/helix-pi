@@ -1,5 +1,3 @@
-require("babel/register");
-
 var breed = require('./app/breeding');
 var Seeder = require('./app/seeder');
 var Entity = require('./app/entity');
