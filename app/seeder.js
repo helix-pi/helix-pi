@@ -13,11 +13,13 @@ function findNodeToAddTo(individual) {
 
 
 function newNode() {
+  move = {
+    x: getRandomInt(-10, 10),
+    y: getRandomInt(-10, 10),
+  };
+
   return (function(api) {
-    api.move({
-      x: getRandomInt(-10, 10),
-      y: getRandomInt(-10, 10),
-    });
+    api.move(move);
   });
 }
 
