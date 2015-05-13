@@ -13,7 +13,7 @@ function findNodeToAddTo(individual) {
 
 
 function newNode() {
-  move = {
+  var move = {
     x: getRandomInt(-10, 10),
     y: getRandomInt(-10, 10),
   };
