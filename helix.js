@@ -12,32 +12,8 @@ var eachSlice = function(array, sizeOfSlice) {
 };
 
 
-var fitnessScenario = {
-  startingPosition() {
-    return {
-      x: 100,
-      y: 100,
-    };
-  },
 
-  expectedEndPosition: {
-    x: 1000,
-    y: -100,
-  },
-
-  duration: 60,
-
-  fitness(entity) {
-    var distance = {
-      x: Math.abs(this.expectedEndPosition.x - entity.position.x),
-      y: Math.abs(this.expectedEndPosition.y - entity.position.y),
-    }
-
-    return 1000 - (distance.x + distance.y);
-  }
-};
-
-function run(generations=100, population=32) {
+function run(fitnessScenario, generations=100, population=32) {
   var newbornIndividuals = [];
   var entities;
  
