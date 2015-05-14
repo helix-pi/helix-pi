@@ -13,7 +13,7 @@ var eachSlice = function(array, sizeOfSlice) {
 
 
 
-function run(fitnessScenario, generations=100, population=32) {
+function run(fitnessScenario, entityApi, generations=100, population=32) {
   var newbornIndividuals = [];
   var entities;
  
@@ -22,7 +22,7 @@ function run(fitnessScenario, generations=100, population=32) {
       .concat(Seeder.make(population - newbornIndividuals.length))
       .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
 
-    entities.forEach(entity => simulateWorld(entity, fitnessScenario.duration));
+    entities.forEach(entity => simulateWorld(entity, fitnessScenario.duration, entityApi));
 
     var fitness = {};
 

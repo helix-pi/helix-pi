@@ -26,10 +26,20 @@ var fitnessScenario = {
   }
 };
 
+var api = function(entity) {
+  return {
+    move(coordinates) {
+      entity.position.x += coordinates.x;
+      entity.position.y += coordinates.y;
+    }
+  }
+}
+
+
 describe('Helix', () => {
   describe('#run', () => {
     it('returns an array of entities with fitnesses', () => {
-      var results = run(fitnessScenario);
+      var results = run(fitnessScenario, api);
       assert(!isNaN(results[0].fitness));
     });
   });
