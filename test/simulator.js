@@ -13,8 +13,8 @@ describe('simulateWorld', () => {
     var api = function(entity) {
       return {
         move (coords) {
-          entity.position.x += coords.x;
-          entity.position.y += coords.y;
+          entity.x += coords.x;
+          entity.y += coords.y;
         }
       };
     };
@@ -23,6 +23,6 @@ describe('simulateWorld', () => {
 
     simulateWorld(entity, 10, api);
 
-    assert.equal(entity.position.x, 10);
+    assert.equal(entity.x, 10);
   });
 });

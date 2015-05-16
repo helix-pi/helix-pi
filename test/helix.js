@@ -9,17 +9,23 @@ var fitnessScenario = {
     };
   },
 
-  expectedEndPosition: {
-    x: 1000,
-    y: -100,
-  },
+  expectedPositions: [
+    {
+      frame: 60,
+      x: 1000,
+      y: -100,
+    },
+    {
+      frame: 120,
+      x: 1300,
+      y: 1000,
+    },
+  ],
 
-  duration: 60,
-
-  fitness(entity) {
+  fitness(expectedPosition, entity) {
     var distance = {
-      x: Math.abs(this.expectedEndPosition.x - entity.position.x),
-      y: Math.abs(this.expectedEndPosition.y - entity.position.y),
+      x: Math.abs(expectedPosition.x - entity.x),
+      y: Math.abs(expectedPosition.y - entity.y),
     }
 
     return 1000 - (distance.x + distance.y);
@@ -29,8 +35,8 @@ var fitnessScenario = {
 var api = function(entity) {
   return {
     move(coordinates) {
-      entity.position.x += coordinates.x;
-      entity.position.y += coordinates.y;
+      entity.x += coordinates.x;
+      entity.y += coordinates.y;
     }
   }
 }

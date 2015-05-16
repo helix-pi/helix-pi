@@ -1,7 +1,9 @@
 class Entity {
   constructor(individual, startingPosition) {
     this.individual = individual;
-    this.position = startingPosition;
+    this.x = startingPosition.x;
+    this.y = startingPosition.y;
+    this.fitnessPerPosition = [];
   }
 }
 
