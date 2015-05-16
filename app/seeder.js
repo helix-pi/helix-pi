@@ -33,13 +33,9 @@ function generateIndividual() {
 
 var Seeder = {
   make(numberOfIndividuals) {
-    var output = [];
-
-    _.times(numberOfIndividuals, () => {
+    return _chain(numberOfIndividuals).range().map(() => {
       output.push(generateIndividual());
-    });
-
-    return output;
+    }).value();
   }
 };
 
