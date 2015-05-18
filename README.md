@@ -1,6 +1,8 @@
 # helix-pi
 Accessible game development, powered by genetic programming
 
+[Check it out.](http://www.helix-pi.net)
+
 What are you even on about bro?
 ---
 
