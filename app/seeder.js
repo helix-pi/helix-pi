@@ -33,7 +33,7 @@ function generateIndividual() {
 
 var Seeder = {
   make(numberOfIndividuals) {
-    return _chain(numberOfIndividuals).range().map(() => {
+    return _.chain(numberOfIndividuals).range().map(() => {
       output.push(generateIndividual());
     }).value();
   }
