@@ -44,7 +44,7 @@ function newNode() {
 }
 
 function generateIndividual() {
-  var entropy = getRandomInt(1, 10);
+  var entropy = getRandomInt(1, 30);
 
   return _.chain(entropy).range().map(function() {
     return newNode();
