@@ -1,5 +1,6 @@
 var run = require('../helix');
 var assert = require("assert");
+var _ = require('lodash');
 
 var fitnessScenario = {
   startingPosition() {
@@ -26,7 +27,7 @@ var fitnessScenario = {
     var distance = {
       x: Math.abs(expectedPosition.x - entity.x),
       y: Math.abs(expectedPosition.y - entity.y),
-    }
+    };
 
     return 1000 - (distance.x + distance.y);
   }
@@ -35,18 +36,29 @@ var fitnessScenario = {
 var api = function(entity) {
   return {
     move(coordinates) {
+      var oldX = entity.x;
       entity.x += coordinates.x;
       entity.y += coordinates.y;
     }
-  }
-}
+
+  };
+};
 
 
 describe('Helix', () => {
   describe('#run', () => {
+    var results = run(fitnessScenario, api);
+
     it('returns an array of entities with fitnesses', () => {
-      var results = run(fitnessScenario, api);
       assert(!isNaN(results[0].fitness));
+    });
+
+    it('actually has different values for the results', () => {
+      var fitnesses = results.map(result => result.fitness);
+      assert(
+        _.uniq(fitnesses).length > 1,
+        `All results had the same fitness: ${fitnesses[0]}`
+      );
     });
   });
 });

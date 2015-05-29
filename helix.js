@@ -7,7 +7,7 @@ var _ = require('lodash');
 
 var eachSlice = function(array, sizeOfSlice) {
   return _.chain(array).groupBy((item, index) => {
-    Math.floor(index / sizeOfSlice);
+    return Math.floor(index / sizeOfSlice);
   }).toArray().value();
 };
 
@@ -20,13 +20,14 @@ var mean = function(array) {
 function run(fitnessScenario, entityApi, generations=100, population=32) {
   var newbornIndividuals = [];
   var entities;
-  var currentFrame = 0;
  
-  _.times(generations, function() {
+  _.times(generations, function(generation) {
+    newbornIndividuals = newbornIndividuals.concat(Seeder.make(population - newbornIndividuals.length));
+
     entities = newbornIndividuals
-      .concat(Seeder.make(population - newbornIndividuals.length))
       .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
 
+    var currentFrame = 0;
     fitnessScenario.expectedPositions.forEach(expectedPosition => {
       entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi));
 
@@ -42,12 +43,12 @@ function run(fitnessScenario, entityApi, generations=100, population=32) {
     });
 
     var fittestIndividuals = entities
-      .map(e => e.individual)
       .sort((a, b) => b.fitness - a.fitness)
+      .map(e => e.individual)
       .slice(0, population / 2);
-   
+
     var breedingPairs = eachSlice(fittestIndividuals, 2)
-      .concat(eachSlice(_.shuffle(fittestIndividuals), 2));
+
     newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
   })
 
