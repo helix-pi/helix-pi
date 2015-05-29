@@ -17,7 +17,7 @@ var mean = function(array) {
 
 
 
-function run(fitnessScenario, entityApi, generations=100, population=32) {
+function run(fitnessScenario, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
  

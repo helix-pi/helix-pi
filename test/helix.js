@@ -39,6 +39,13 @@ var api = function(entity) {
       var oldX = entity.x;
       entity.x += coordinates.x;
       entity.y += coordinates.y;
+    },
+
+    getPosition() {
+      return {
+        x: entity.x,
+        y: entity.y,
+      }
     }
 
   };
@@ -58,6 +65,13 @@ describe('Helix', () => {
       assert(
         _.uniq(fitnesses).length > 1,
         `All results had the same fitness: ${fitnesses[0]}`
+      );
+    });
+
+    it('is teh smats at making programs', () => {
+      assert(
+        results[0].fitness > 750,
+        `Fittest program: ${results[0].fitness}. Goal: 750`
       );
     });
   });

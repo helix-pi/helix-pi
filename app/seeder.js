@@ -18,9 +18,29 @@ function newNode() {
     y: getRandomInt(-10, 10),
   };
 
-  return (function(api) {
-    api.move(move);
-  });
+  var randomX = getRandomInt(0, 600);
+
+  if (getRandomInt(0, 100) > 60) {
+    var differentMove = {
+      x: getRandomInt(-10, 10),
+      y: getRandomInt(-10, 10),
+    };
+
+    return (function(api) {
+      var condition = (api.getPosition().x < randomX);
+
+      if (condition) {
+        api.move(move);
+      } else {
+        api.move(differentMove);
+      };
+    });
+  } else {
+    return (function(api) {
+      api.move(move);
+    });
+  }
+
 }
 
 function generateIndividual() {
