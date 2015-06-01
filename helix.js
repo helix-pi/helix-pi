@@ -20,6 +20,7 @@ var mean = function(array) {
 function run(fitnessScenario, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
+  var fittestEntity;
 
   var apiDescription = {
     getPosition: {
@@ -48,17 +49,22 @@ function run(fitnessScenario, entityApi, generations=500, population=32) {
       entity.fitness = mean(entity.fitnessPerPosition);
     });
 
-    var fittestIndividuals = entities
-      .sort((a, b) => b.fitness - a.fitness)
+    var entitiesSortedByFitness = entities.sort((a, b) => b.fitness - a.fitness);
+
+    var fittestIndividuals = entitiesSortedByFitness
       .map(e => e.individual)
       .slice(0, population / 2);
 
-    var breedingPairs = eachSlice(fittestIndividuals, 2)
+    if (fittestEntity === undefined || entitiesSortedByFitness[0].fitness > fittestEntity.fitness) {
+      fittestEntity = entitiesSortedByFitness[0];
+    };
+
+    var breedingPairs = eachSlice(fittestIndividuals, 2);
 
     newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
-  })
+  });
 
-  return entities.sort((a, b) => b.fitness - a.fitness);
+  return [fittestEntity].concat(entities.sort((a, b) => b.fitness - a.fitness));
 }
 
 module.exports = run;
