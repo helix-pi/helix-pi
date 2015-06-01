@@ -20,9 +20,15 @@ var mean = function(array) {
 function run(fitnessScenario, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
+
+  var apiDescription = {
+    getPosition: {
+      returns: {x: 0, y: 0},
+    }
+  }// TODO - fix this hack
  
   _.times(generations, function(generation) {
-    newbornIndividuals = newbornIndividuals.concat(Seeder.make(population - newbornIndividuals.length));
+    newbornIndividuals = newbornIndividuals.concat(Seeder.make(apiDescription, population - newbornIndividuals.length));
 
     entities = newbornIndividuals
       .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
