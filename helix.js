@@ -5,30 +5,28 @@ var simulateWorld = require('./app/simulator');
 
 var _ = require('lodash');
 
-var eachSlice = function(array, sizeOfSlice) {
+var eachSlice = function (array, sizeOfSlice) {
   return _.chain(array).groupBy((item, index) => {
     return Math.floor(index / sizeOfSlice);
   }).toArray().value();
 };
 
-var mean = function(array) {
+var mean = function (array) {
   return _.sum(array) / array.length;
-}
+};
 
-
-
-function run(fitnessScenario, entityApi, generations=500, population=32) {
+function run (fitnessScenario, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
   var fittestEntity;
 
   var apiDescription = {
     getPosition: {
-      returns: {x: 0, y: 0},
+      returns: {x: 0, y: 0}
     }
-  }// TODO - fix this hack
- 
-  _.times(generations, function(generation) {
+  };// TODO - fix this hack
+
+  _.times(generations, function (generation) {
     newbornIndividuals = newbornIndividuals.concat(Seeder.make(apiDescription, population - newbornIndividuals.length));
 
     entities = newbornIndividuals

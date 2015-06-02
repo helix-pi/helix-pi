@@ -1,4 +1,4 @@
-function breed(mum, dad) {
+function breed (mum, dad) {
   var totalGenes = mum.length + dad.length;
 
   var genes = mum.concat(dad);

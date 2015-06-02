@@ -1,5 +1,5 @@
 class Entity {
-  constructor(individual, startingPosition) {
+  constructor (individual, startingPosition) {
     this.individual = individual;
     this.x = startingPosition.x;
     this.y = startingPosition.y;

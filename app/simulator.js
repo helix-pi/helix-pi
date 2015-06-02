@@ -1,6 +1,6 @@
 var _ = require('lodash');
 
-function simulateWorld(entity, numberOfFrames, api) {
+function simulateWorld (entity, numberOfFrames, api) {
   var entityApi = api(entity);
 
   _.times(numberOfFrames, () => {
