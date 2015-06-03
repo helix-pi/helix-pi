@@ -20,21 +20,18 @@ function run (fitnessScenario, entityApi, generations=500, population=32) {
   var entities;
   var fittestEntity;
 
-  var apiDescription = {
-    getPosition: {
-      returns: {x: 0, y: 0}
-    }
-  };// TODO - fix this hack
+
+  var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
 
   _.times(generations, function (generation) {
-    newbornIndividuals = newbornIndividuals.concat(Seeder.make(apiDescription, population - newbornIndividuals.length));
+    newbornIndividuals = newbornIndividuals.concat(Seeder.make(compiledApi, population - newbornIndividuals.length));
 
     entities = newbornIndividuals
       .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
 
     var currentFrame = 0;
     fitnessScenario.expectedPositions.forEach(expectedPosition => {
-      entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi));
+      entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi, fitnessScenario.input, currentFrame));
 
       currentFrame += expectedPosition.frame;
 

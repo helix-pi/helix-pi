@@ -28,7 +28,7 @@ function findNodeToAddTo(individual) {
   return individual;
 }
 
-function newNode (apiDescription) {
+function newNode (api) {
   var move = {
     x: getRandomInt(-10, 10),
     y: getRandomInt(-10, 10)
@@ -37,13 +37,22 @@ function newNode (apiDescription) {
   var randomX = getRandomInt(0, 600);
   var randomY = getRandomInt(0, 400);
 
+  if (api.checkButtonDown && getRandomInt(0, 100) > 80) {
+    var buttonToCheck = _.sample(api.checkButtonDown.takes);
+    return (api, currentFrame) => {
+      if (api.checkButtonDown(buttonToCheck, currentFrame)) {
+        api.move(move);
+      }
+    }
+  }
+
   if (getRandomInt(0, 100) > 60) {
     var differentMove = {
       x: getRandomInt(-10, 10),
       y: getRandomInt(-10, 10)
     };
 
-    var attributeToCompare = randomAttribute(apiDescription.getPosition.returns);
+    var attributeToCompare = randomAttribute(api.getPosition.returns);
     var condition = compare(
       [gt, lt],
       function (api) { return api.getPosition()[attributeToCompare]; },
@@ -64,18 +73,18 @@ function newNode (apiDescription) {
   }
 }
 
-function generateIndividual (apiDescription) {
-  var entropy = getRandomInt(1, 30);
+function generateIndividual (api) {
+  var entropy = getRandomInt(1, 10);
 
   return _.chain(entropy).range().map(() => {
-    return newNode(apiDescription);
+    return newNode(api);
   }).value();
 }
 
 var Seeder = {
-  make (apiDescription, numberOfIndividuals) {
+  make (api, numberOfIndividuals) {
     return _.chain(numberOfIndividuals).range().map(() => {
-      return generateIndividual(apiDescription);
+      return generateIndividual(api);
     }).value();
   }
 };

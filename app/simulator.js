@@ -1,11 +1,19 @@
 var _ = require('lodash');
 
-function simulateWorld (entity, numberOfFrames, api) {
-  var entityApi = api(entity);
+function simulateWorld (entity, numberOfFrames, api, input, currentFrame) {
+  function getButtonDown(button, currentFrame) {
+    return input.filter((buttonPress) => {
+      return buttonPress.key === button &&
+             buttonPress.startFrame < currentFrame &&
+             buttonPress.endFrame > currentFrame;
+    }).length > 0;
+  }
 
-  _.times(numberOfFrames, () => {
+  var entityApi = api(entity, getButtonDown);
+
+  _.times(numberOfFrames, (frame) => {
     _.each(entity.individual, function (gene) {
-      gene(entityApi);
+      gene(entityApi, currentFrame + frame);
     });
   });
 }
