@@ -10,5 +10,10 @@
     "test": "mocha --compilers js:babel/register"
   },
 
-  "main": "./helix.js"
+  "main": "./helix.js" ,
+
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/widdershin/helix-pi.git"
+  }
 }
