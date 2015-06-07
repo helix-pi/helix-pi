@@ -20,3 +20,10 @@ Huh.
 Yeah, exactly. So at the time of writing, I've made a proof of concept for evolving simple programs to move boxes around in Javascript. It actually does work, in that I've watched it write a program to move the box in the right direction.
 
 My vision for the short term is to create the interesting visual pieces that enable helix-pi to be used, the editor/player.
+
+My first major milestone is to make Pong. Here is the the stuff that needs to happen for me to get there:
+
+ - [ ] Support for multiple scenarios
+ - [ ] A way for entities to check collisions with other entities
+ - [ ] The above requires entities have a way to reference other entities
+
