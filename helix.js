@@ -18,7 +18,7 @@ var mean = function (array) {
 function run (fitnessScenario, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
-  var fittestEntity;
+  var fittestEntities = [];
 
 
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
@@ -50,16 +50,17 @@ function run (fitnessScenario, entityApi, generations=500, population=32) {
       .map(e => e.individual)
       .slice(0, population / 2);
 
-    if (fittestEntity === undefined || entitiesSortedByFitness[0].fitness > fittestEntity.fitness) {
-      fittestEntity = entitiesSortedByFitness[0];
-    };
+    fittestEntities = fittestEntities
+      .concat(entitiesSortedByFitness)
+      .sort((a, b) => b.fitness - a.fitness)
+      .slice(0, 16);
 
     var breedingPairs = eachSlice(fittestIndividuals, 2);
 
     newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
   });
 
-  return [fittestEntity].concat(entities.sort((a, b) => b.fitness - a.fitness));
+  return fittestEntities;
 }
 
 module.exports = run;
