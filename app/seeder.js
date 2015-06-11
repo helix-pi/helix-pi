@@ -23,11 +23,6 @@ function getRandomInt (min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
-function findNodeToAddTo(individual) {
-  // TODO - make this actually find something other than root
-  return individual;
-}
-
 function newNode (api) {
   var move = {
     x: getRandomInt(-10, 10),
