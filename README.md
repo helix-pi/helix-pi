@@ -23,7 +23,7 @@ Helix Pi is split into two separate repositories at the moment. This one, helix-
 
 My first major milestone is to make Pong. Here is the the stuff that needs to happen for me to get there:
 
- - [ ] Support for multiple scenarios
+ - [X] Support for multiple scenarios
  - [ ] Support for multiple entities in a scenario
  - [ ] A way for entities to check collisions with other entities
  - [ ] The above requires entities have a way to reference other entities
