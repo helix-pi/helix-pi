@@ -2,89 +2,62 @@ var run = require('../helix');
 var assert = require("assert");
 var _ = require('lodash');
 
-var fitnessScenario = {
-  startingPosition() {
-    return {
-      x: 100,
-      y: 100,
-    };
-  },
-
-  expectedPositions: [
+var fitnessScenarios = {
+  scenarios: [
     {
-      frame: 60,
-      x: 1000,
-      y: -100,
+      startingPosition () {
+        return {
+          x: 0,
+          y: 0
+        };
+      },
+
+      expectedPositions: [
+        {
+          frame: 60,
+          x: 500,
+          y: 0
+        }
+      ],
+
+      input: [
+        {
+          startFrame: 0,
+          endFrame: 60,
+          key: 'right'
+        }
+      ]
     },
     {
-      frame: 120,
-      x: 1300,
-      y: 1000,
-    },
-  ],
+      startingPosition () {
+        return {
+          x: 0,
+          y: 0
+        };
+      },
 
-  input: [],
+      expectedPositions: [
+        {
+          frame: 60,
+          x: -500,
+          y: 0
+        }
+      ],
 
-  fitness(expectedPosition, entity) {
-    var distance = {
-      x: Math.abs(expectedPosition.x - entity.x),
-      y: Math.abs(expectedPosition.y - entity.y),
-    };
-
-    return 1000 - (distance.x + distance.y);
-  }
-};
-
-var inputFitnessScenario = {
-  startingPosition() {
-    return {
-      x: 100,
-      y: 100,
-    };
-  },
-
-  expectedPositions: [
-    {
-      frame: 60,
-      x: 100,
-      y: 100,
-    },
-    {
-      frame: 120,
-      x: 800,
-      y: 100
-    },
-    {
-      frame: 180,
-      x: 800,
-      y: 100
-    },
-    {
-      frame: 240,
-      x: 100,
-      y: 100
+      input: [
+        {
+          startFrame: 0,
+          endFrame: 60,
+          key: 'left'
+        }
+      ]
     }
   ],
 
-  input: [
-    {
-      startFrame: 60,
-      endFrame: 120,
-
-      key: 'right'
-    },
-    {
-      startFrame: 180,
-      endFrame: 240,
-
-      key: 'left'
-    }
-  ],
-
-  fitness(expectedPosition, entity) {
+  fitness (expectedPosition, entity) {
     var distance = {
       x: Math.abs(expectedPosition.x - entity.x),
-      y: Math.abs(expectedPosition.y - entity.y),
+      y: Math.abs(expectedPosition.y - entity.y)
     };
 
     return 1000 - (distance.x + distance.y);
@@ -128,7 +101,7 @@ var api = function(entity, checkButtonDown) {
 
 describe('Helix', () => {
   describe('#run', () => {
-    var results = run(fitnessScenario, api);
+    var results = run(fitnessScenarios, api);
 
     it('returns an array of entities with fitnesses', () => {
       assert(!isNaN(results[0].fitness));
@@ -150,7 +123,7 @@ describe('Helix', () => {
     });
 
     it('handles input', () => {
-      let inputResults = run(inputFitnessScenario, api);
+      let inputResults = results;
 
       console.log(inputResults[0].fitness);
       console.log(inputResults[0].individual.map(gene => String(gene)).join("\n"));
