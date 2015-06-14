@@ -15,7 +15,7 @@ var mean = function (array) {
   return _.sum(array) / array.length;
 };
 
-function run (fitnessScenario, entityApi, generations=500, population=32) {
+function run (fitnessScenarios, entityApi, generations=500, population=32) {
   var newbornIndividuals = [];
   var entities;
   var fittestEntities = [];
@@ -26,38 +26,40 @@ function run (fitnessScenario, entityApi, generations=500, population=32) {
   _.times(generations, function (generation) {
     newbornIndividuals = newbornIndividuals.concat(Seeder.make(compiledApi, population - newbornIndividuals.length));
 
-    entities = newbornIndividuals
-      .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
+    fitnessScenarios.scenarios.forEach(fitnessScenario => {
+      entities = newbornIndividuals
+        .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
 
-    var currentFrame = 0;
-    fitnessScenario.expectedPositions.forEach(expectedPosition => {
-      entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi, fitnessScenario.input, currentFrame));
+      var currentFrame = 0;
+      fitnessScenario.expectedPositions.forEach(expectedPosition => {
+        entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi, fitnessScenario.input, currentFrame));
 
-      currentFrame += expectedPosition.frame;
+        currentFrame += expectedPosition.frame;
+
+        entities.forEach(entity => {
+          entity.fitnessPerPosition.push(fitnessScenarios.fitness(expectedPosition, entity));
+        });
+      });
 
       entities.forEach(entity => {
-        entity.fitnessPerPosition.push(fitnessScenario.fitness(expectedPosition, entity));
+        entity.fitness = mean(entity.fitnessPerPosition);
       });
+
+      var entitiesSortedByFitness = entities.sort((a, b) => b.fitness - a.fitness);
+
+      var fittestIndividuals = entitiesSortedByFitness
+        .map(e => e.individual)
+        .slice(0, population / 2);
+
+      fittestEntities = fittestEntities
+        .concat(entitiesSortedByFitness)
+        .sort((a, b) => b.fitness - a.fitness)
+        .slice(0, 16);
+
+      var breedingPairs = eachSlice(fittestIndividuals, 2);
+
+      newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
     });
-
-    entities.forEach(entity => {
-      entity.fitness = mean(entity.fitnessPerPosition);
-    });
-
-    var entitiesSortedByFitness = entities.sort((a, b) => b.fitness - a.fitness);
-
-    var fittestIndividuals = entitiesSortedByFitness
-      .map(e => e.individual)
-      .slice(0, population / 2);
-
-    fittestEntities = fittestEntities
-      .concat(entitiesSortedByFitness)
-      .sort((a, b) => b.fitness - a.fitness)
-      .slice(0, 16);
-
-    var breedingPairs = eachSlice(fittestIndividuals, 2);
-
-    newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
   });
 
   return fittestEntities;
