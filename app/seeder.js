@@ -19,7 +19,6 @@ function compare (operators, a, b) {
   return (api) => { return operator(a(api), b(api)); };
 }
 
-
 function newNode (api) {
   var move = {
     x: getRandomInt(-10, 10),
