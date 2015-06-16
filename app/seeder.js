@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var getRandomInt = require('../lib/get-random-int');
 
 function gt (a, b) {
   return a > b;
@@ -18,10 +19,6 @@ function compare (operators, a, b) {
   return (api) => { return operator(a(api), b(api)); };
 }
 
-// TODO - extract to lib
-function getRandomInt (min, max) {
-  return Math.floor(Math.random() * (max - min)) + min;
-}
 
 function newNode (api) {
   var move = {
