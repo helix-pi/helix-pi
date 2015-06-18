@@ -16,97 +16,42 @@ var mean = function (array) {
 };
 
 function run (fitnessScenarios, entityApi, generations=500, population=32, newbornIndividuals = []) {
+  var scenarios = fitnessScenarios.scenarios;
   var entities;
   var fittestEntities = [];
 
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
 
   var individuals = {
-    "eevee": [],
-    "stan": [],
-    "greg": []
-  }
-
-  var individuals = [];
+    'swordsunit': [],
+    'ball': []
+  };
   _.times(generations, generation => {
-    fillInIndividuals(individuals); // MUTATION @!!!!#@@!!@!@43
+    fillInIndividuals(compiledApi, individuals);
 
+    // fitnesses :: Participant \\ Individual \\ Scenario \\ FitnessPerKeyframe
     var fitnesses = {
-      "eevee": {},
-      "stan": {},
-      "greg": {}
+      'swordsunit': {},
+      'ball': {}
     };
 
-    scenarios.forEach(scenario => {
-      scenarios.participants.forEach(participant => {
-        individuals[participant].forEach(individual => {
-          individualFitnesses = fitnesses[participant][individual];
+    scenarios.forEach(scenario => { scoreScenario(scenario, fitnesses) });
 
-          if (individualFitnesses === undefined) {
-            fitnessForIndividuals[participant][individual] = [];
-          }
+    function scoreScenario(scenario, fitnesses) {
+      scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses) });
+    }
 
-          fitnesses[participant][individual][s] = simulate(s,i,{active:p});
+    function scoreParticipantOnScenario(scenario, participant, fitnesses) {
+      individuals[participant].forEach(individual => { scoreIndividualOnScenario(scenario, participant, individual, fitnesses) });
+    }
 
-          fitnessForIndividualsPerScenario[participant][individual].append(
-            weightedAverage(simulate(scenario, individual, {active: participant}))
-          );
-        });
+    function fillInIndividuals(compiledApi, individuals) {
+      var keys = Object.keys(individuals);
+      keys.forEach(key => {
+        var existing = individuals[key];
+        individuals[key].concat(Seeder.make(compiledApi, population - existing.length));
       });
-    });
-
-    fitnesses.forEach((participant, fitnessesForParticipant) => {
-      fitnessesForParticipant.forEach((individual, individualFitnesses) => {
-        individual.fitness = weightedAverage(individualFitnesses);
-      });
-    });
-
-    bestIndividualsForParticipant = {};
-
-    scenarios.participants.forEach(participant => {
-      bestIndividualsForParticipant[participant] = findBestIndividualForParticipant(participant, fitnesses);
-    });
-
-    return bestIndividualsForParticipant;
-  });
-
-  _.times(generations, function (generation) {
-    newbornIndividuals = newbornIndividuals.concat(Seeder.make(compiledApi, population - newbornIndividuals.length));
-
-    fitnessScenarios.scenarios.forEach(fitnessScenario => {
-      entities = newbornIndividuals
-        .map(individual => new Entity(individual, fitnessScenario.startingPosition()));
-
-      var currentFrame = 0;
-      fitnessScenario.expectedPositions.forEach(expectedPosition => {
-        entities.forEach(entity => simulateWorld(entity, expectedPosition.frame - currentFrame, entityApi, fitnessScenario.input, currentFrame));
-
-        currentFrame += expectedPosition.frame;
-
-        entities.forEach(entity => {
-          entity.fitnessPerPosition.push(fitnessScenarios.fitness(expectedPosition, entity));
-        });
-      });
-
-      entities.forEach(entity => {
-        entity.fitness = mean(entity.fitnessPerPosition);
-      });
-
-      var entitiesSortedByFitness = entities.sort((a, b) => b.fitness - a.fitness);
-
-      var fittestIndividuals = entitiesSortedByFitness
-        .map(e => e.individual)
-        .slice(0, population / 2);
-
-      fittestEntities = fittestEntities
-        .concat(entitiesSortedByFitness)
-        .sort((a, b) => b.fitness - a.fitness)
-        .slice(0, 16);
-
-      var breedingPairs = eachSlice(fittestIndividuals, 2);
-
-      newbornIndividuals = _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
-    });
+    }
   });
 
   return fittestEntities;

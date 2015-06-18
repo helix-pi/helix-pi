@@ -3,22 +3,32 @@ var assert = require("assert");
 var _ = require('lodash');
 
 var fitnessScenarios = {
+  participants: ['swordsunit', 'ball'],
+
   scenarios: [
     {
-      startingPosition () {
-        return {
+      participants: ['swordsunit'],
+
+      initialPositions: {
+        'swordsunit': {
           x: 0,
           y: 0
-        };
+        }
       },
 
-      expectedPositions: [
-        {
-          frame: 60,
-          x: 500,
-          y: 0
-        }
-      ],
+      startingPosition(name) {
+        return(this.initialPositions[name]);
+      },
+
+      expectedPositions: {
+        'swordsunit': [
+          {
+            frame: 60,
+            x: 500,
+            y: 0
+          }
+        ]
+      },
 
       input: [
         {
@@ -29,20 +39,28 @@ var fitnessScenarios = {
       ]
     },
     {
-      startingPosition () {
-        return {
+      participants: ['swordsunit'],
+
+      initialPositions: {
+        'swordsunit': {
           x: 0,
           y: 0
-        };
+        }
       },
 
-      expectedPositions: [
-        {
-          frame: 60,
-          x: -500,
-          y: 0
-        }
-      ],
+      startingPosition(name) {
+        return(this.initialPositions[name]);
+      },
+
+      expectedPositions: {
+        'swordsunit': [
+          {
+            frame: 60,
+            x: -500,
+            y: 0
+          }
+        ]
+      },
 
       input: [
         {

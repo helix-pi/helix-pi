@@ -25,10 +25,13 @@ function newNode (api) {
     y: getRandomInt(-10, 10)
   };
 
+  var actionSelector = getRandomInt(0, 100);
+
   var randomX = getRandomInt(0, 600);
   var randomY = getRandomInt(0, 400);
 
-  if (api.checkButtonDown && getRandomInt(0, 100) > 80) {
+  // There is a 20% chance to emit a node that operates as a NOP if a button is not down
+  if (api.checkButtonDown && actionSelector > 80) {
     var buttonToCheck = _.sample(api.checkButtonDown.takes);
     return (api, currentFrame) => {
       if (api.checkButtonDown(buttonToCheck, currentFrame)) {
@@ -37,7 +40,9 @@ function newNode (api) {
     }
   }
 
-  if (getRandomInt(0, 100) > 60) {
+  // There is a 30% chance to emit a node that picks between two nodes depending on an XY position
+  // The paucity of this - in a history sense - is probably why circles are so awful
+  if (actionSelector > 50) {
     var differentMove = {
       x: getRandomInt(-10, 10),
       y: getRandomInt(-10, 10)
@@ -57,11 +62,11 @@ function newNode (api) {
         api.move(differentMove);
       }
     };
-  } else {
-    return (api) => {
-      api.move(move);
-    };
-  }
+  };
+
+  return (api) => {
+    api.move(move);
+  };
 }
 
 function generateIndividual (api) {
