@@ -65,7 +65,7 @@ function newNode (api) {
 }
 
 function generateIndividual (api) {
-  var entropy = getRandomInt(1, 10);
+  var entropy = getRandomInt(1, 50);
 
   return _.chain(entropy).range().map(() => {
     return newNode(api);

@@ -15,13 +15,60 @@ var mean = function (array) {
   return _.sum(array) / array.length;
 };
 
-function run (fitnessScenarios, entityApi, generations=500, population=32) {
-  var newbornIndividuals = [];
+function run (fitnessScenarios, entityApi, generations=500, population=32, newbornIndividuals = []) {
   var entities;
   var fittestEntities = [];
 
-
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
+
+  var individuals = {
+    "eevee": [],
+    "stan": [],
+    "greg": []
+  }
+
+  var individuals = [];
+  _.times(generations, generation => {
+    fillInIndividuals(individuals); // MUTATION @!!!!#@@!!@!@43
+
+    var fitnesses = {
+      "eevee": {},
+      "stan": {},
+      "greg": {}
+    };
+
+    scenarios.forEach(scenario => {
+      scenarios.participants.forEach(participant => {
+        individuals[participant].forEach(individual => {
+          individualFitnesses = fitnesses[participant][individual];
+
+          if (individualFitnesses === undefined) {
+            fitnessForIndividuals[participant][individual] = [];
+          }
+
+          fitnesses[participant][individual][s] = simulate(s,i,{active:p});
+
+          fitnessForIndividualsPerScenario[participant][individual].append(
+            weightedAverage(simulate(scenario, individual, {active: participant}))
+          );
+        });
+      });
+    });
+
+    fitnesses.forEach((participant, fitnessesForParticipant) => {
+      fitnessesForParticipant.forEach((individual, individualFitnesses) => {
+        individual.fitness = weightedAverage(individualFitnesses);
+      });
+    });
+
+    bestIndividualsForParticipant = {};
+
+    scenarios.participants.forEach(participant => {
+      bestIndividualsForParticipant[participant] = findBestIndividualForParticipant(participant, fitnesses);
+    });
+
+    return bestIndividualsForParticipant;
+  });
 
   _.times(generations, function (generation) {
     newbornIndividuals = newbornIndividuals.concat(Seeder.make(compiledApi, population - newbornIndividuals.length));
