@@ -16,7 +16,7 @@ var fitnessScenarios = {
         }
       },
 
-      startingPosition(name) {
+      startPosition(name) {
         return(this.initialPositions[name]);
       },
 
@@ -48,7 +48,7 @@ var fitnessScenarios = {
         }
       },
 
-      startingPosition(name) {
+      startPosition(name) {
         return(this.initialPositions[name]);
       },
 

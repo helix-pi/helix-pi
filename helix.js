@@ -38,6 +38,12 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
       scoreScenario(scenario, fitnesses)
     });
 
+    _.each(individuals, (individualsForParticipant, participant) => {
+      individualsForParticipant.forEach(individual => {
+        boilDownIndividualScore(individual, participant, fitnesses);
+      });
+    });
+
     function scoreScenario(scenario, fitnesses) {
       scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses) });
     }
@@ -82,6 +88,16 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
 
         fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
       });
+    }
+
+    function weightedAverage (scoresPerScenario) {
+      return _.sum(scoresPerScenario.map(score => Math.pow(score, 1)));
+    }
+
+    function boilDownIndividualScore (individual, participant, fitnesses) {
+      return weightedAverage(
+        Object.values(fitnesses[participant][individual]).map(scoresForScenario => _.sum(scoresForScenario))
+      );
     }
   });
 

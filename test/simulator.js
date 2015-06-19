@@ -21,7 +21,7 @@ describe('simulateWorld', () => {
 
     var entity = new Entity(individual, {x: 0, y: 0});
 
-    simulateWorld(entity, 10, api);
+    simulateWorld([entity], 10, api, []);
 
     assert.equal(entity.x, 10);
   });
