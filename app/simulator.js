@@ -9,10 +9,10 @@ function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
     }).length > 0;
   }
 
-  var entityApi = api(entity, getButtonDown);
-
   _.times(numberOfFrames, (frame) => {
     _.each(entities, (entity) => {
+      var entityApi = api(entity, getButtonDown);
+
       _.each(entity.individual, function (gene) {
         gene(entityApi, currentFrame + frame);
       });

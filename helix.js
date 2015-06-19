@@ -22,20 +22,21 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
 
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
 
-  var individuals = {
-    'swordsunit': [],
-    'ball': []
-  };
+  var individuals = _.chain(fitnessScenarios.participants).map(participant => {
+    return [participant, []];
+  }).object().value();
+
+  var fitnesses = _.chain(fitnessScenarios.participants).map(participant => {
+    return [participant, {}];
+  }).object().value();
+
   _.times(generations, generation => {
     fillInIndividuals(compiledApi, individuals);
 
-    // fitnesses :: Participant \\ Individual \\ Scenario \\ FitnessPerKeyframe
-    var fitnesses = {
-      'swordsunit': {},
-      'ball': {}
-    };
-
-    scenarios.forEach(scenario => { scoreScenario(scenario, fitnesses) });
+    scenarios.forEach((scenario, index) => {
+      scenario.id = index;
+      scoreScenario(scenario, fitnesses)
+    });
 
     function scoreScenario(scenario, fitnesses) {
       scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses) });
@@ -46,10 +47,13 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
     }
 
     function fillInIndividuals(compiledApi, individuals) {
-      var keys = Object.keys(individuals);
-      keys.forEach(key => {
-        var existing = individuals[key];
-        individuals[key].concat(Seeder.make(compiledApi, population - existing.length));
+      fitnessScenarios.participants.forEach(participant => {
+        var existing = individuals[participant];
+        if (existing === undefined) {
+          individuals[participant] = existing = [];
+        };
+
+        individuals[participant] = existing.concat(Seeder.make(compiledApi, population - existing.length));
       });
     }
 
@@ -57,10 +61,13 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
       // This is where we call up a variant on the original simulation code
       // Note that exactly one participant is allowed to vary at each point
       var currentFrame = 0;
-      fitnesses[participant][individual][scenario] = [];
+      if (fitnesses[participant][individual] === undefined) {
+        fitnesses[participant][individual] = {};
+      };
+      fitnesses[participant][individual][scenario.id] = [];
 
       /* Magic splicing~~~ TODO: Add tweened individuals to all of this */
-      var initial = scenario.startingPosition(participant);
+      var initial = scenario.startPosition(participant);
       var entities = [new Entity(individual, initial)]
 
       var expectedPositions = scenario.expectedPositions[participant];
@@ -68,12 +75,12 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
       expectedPositions.forEach(expectedPosition => {
         var frameCount = expectedPosition.frame - currentFrame;
 
-        simulateWorld(entities, timeframe, entityApi, fitnessScenario.input, currentFrame);
+        simulateWorld(entities, frameCount, entityApi, scenario.input, currentFrame);
 
         currentFrame = expectedPosition.frame;
-        var evaluatedFitness = fitnessScenario.fitness(expectedPosition, entity)
+        var evaluatedFitness = fitnessScenarios.fitness(expectedPosition, entities[0])
 
-        fitnesses[participant][individual][scenario].push(evaluatedFitness);
+        fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
       });
     }
   });
