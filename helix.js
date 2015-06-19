@@ -73,7 +73,7 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
         currentFrame = expectedPosition.frame;
         var evaluatedFitness = fitnessScenario.fitness(expectedPosition, entity)
 
-        fitnesses[participant][individual][scenario].push(0);
+        fitnesses[participant][individual][scenario].push(evaluatedFitness);
       });
     }
   });
