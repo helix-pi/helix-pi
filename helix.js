@@ -18,7 +18,7 @@ var mean = function (array) {
 function run (fitnessScenarios, entityApi, generations=500, population=32, newbornIndividuals = []) {
   var scenarios = fitnessScenarios.scenarios;
   var entities;
-  var fittestEntities = [];
+  var fittestIndividuals = [];
 
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
 
@@ -30,6 +30,11 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
     return [participant, {}];
   }).object().value();
 
+  var fittestIndividualsOfAllTime = _.chain(fitnessScenarios.participants).map(participant => {
+    return [participant, []];
+  }).object().value();
+
+
   _.times(generations, generation => {
     fillInIndividuals(compiledApi, individuals);
 
@@ -40,9 +45,11 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
-        boilDownIndividualScore(individual, participant, fitnesses);
+        individual.fitness = boilDownIndividualScore(individual, participant, fitnesses);
       });
     });
+
+    individuals = breedFittestIndividuals(individuals);
 
     function scoreScenario(scenario, fitnesses) {
       scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses) });
@@ -96,12 +103,36 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
 
     function boilDownIndividualScore (individual, participant, fitnesses) {
       return weightedAverage(
-        Object.values(fitnesses[participant][individual]).map(scoresForScenario => _.sum(scoresForScenario))
+        _.values(fitnesses[participant][individual])
+          .map(scoresForScenario => _.sum(scoresForScenario))
       );
     }
+
+    function breedFittestIndividuals (individuals) {
+      return _.chain(individuals)
+        .map((individuals, participant) => [participant, breedFittestIndividualsForParticipant(participant, individuals)])
+        .object()
+        .value();
+    }
+
+    function breedFittestIndividualsForParticipant (participant, individuals) {
+      var fittestIndividuals = individuals
+        .sort((a, b) => b.fitness - a.fitness)
+        .slice(0, Math.ceil(population / 2));
+
+      fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
+        .concat(fittestIndividuals)
+        .sort((a, b) => b.fitness - a.fitness)
+        .slice(0, Math.ceil(population / 2));
+
+      var breedingPairs = eachSlice(fittestIndividuals, 2);
+
+      return _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
+    }
+
   });
 
-  return fittestEntities;
+  return fittestIndividualsOfAllTime;
 }
 
 module.exports = run;

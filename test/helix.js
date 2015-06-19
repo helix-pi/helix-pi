@@ -122,11 +122,11 @@ describe('Helix', () => {
     var results = run(fitnessScenarios, api);
 
     it('returns an array of entities with fitnesses', () => {
-      assert(!isNaN(results[0].fitness));
+      assert(!isNaN(results['swordsunit'][0].fitness));
     });
 
     it('actually has different values for the results', () => {
-      var fitnesses = results.map(result => result.fitness);
+      var fitnesses = results['swordsunit'].map(result => result.fitness);
       assert(
         _.uniq(fitnesses).length > 1,
         `All results had the same fitness: ${fitnesses[0]}`
@@ -135,20 +135,20 @@ describe('Helix', () => {
 
     it('is teh smats at making programs', () => {
       assert(
-        results[0].fitness > 750,
-        `Fittest program: ${results[0].fitness}. Goal: 750`
+        results['swordsunit'][0].fitness > 750,
+        `Fittest program: ${results['swordsunit'][0].fitness}. Goal: 750`
       );
     });
 
     it('handles input', () => {
       let inputResults = results;
 
-      console.log(inputResults[0].fitness);
-      console.log(inputResults[0].individual.map(gene => String(gene)).join("\n"));
+      console.log(inputResults['swordsunit'][0].fitness);
+      console.log(inputResults['swordsunit'][0].map(gene => String(gene)).join("\n"));
 
       assert(
-        inputResults[0].fitness > 900,
-        `Handle controls better: ${inputResults[0].fitness}/900`
+        inputResults['swordsunit'][0].fitness > 900,
+        `Handle controls better: ${inputResults['swordsunit'][0].fitness}/900`
       )
     });
   });
