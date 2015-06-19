@@ -1,6 +1,6 @@
 var _ = require('lodash');
 
-function simulateWorld (entity, numberOfFrames, api, input, currentFrame) {
+function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
   function getButtonDown(button, currentFrame) {
     return input.filter((buttonPress) => {
       return buttonPress.key === button &&
@@ -12,8 +12,10 @@ function simulateWorld (entity, numberOfFrames, api, input, currentFrame) {
   var entityApi = api(entity, getButtonDown);
 
   _.times(numberOfFrames, (frame) => {
-    _.each(entity.individual, function (gene) {
-      gene(entityApi, currentFrame + frame);
+    _.each(entities, (entity) => {
+      _.each(entity.individual, function (gene) {
+        gene(entityApi, currentFrame + frame);
+      });
     });
   });
 }

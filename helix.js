@@ -52,6 +52,30 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
         individuals[key].concat(Seeder.make(compiledApi, population - existing.length));
       });
     }
+
+    function scoreIndividualOnScenario(scenario, participant, individual, fitnesses) {
+      // This is where we call up a variant on the original simulation code
+      // Note that exactly one participant is allowed to vary at each point
+      var currentFrame = 0;
+      fitnesses[participant][individual][scenario] = [];
+
+      /* Magic splicing~~~ TODO: Add tweened individuals to all of this */
+      var initial = scenario.startingPosition(participant);
+      var entities = [new Entity(individual, initial)]
+
+      var expectedPositions = scenario.expectedPositions[participant];
+
+      expectedPositions.forEach(expectedPosition => {
+        var frameCount = expectedPosition.frame - currentFrame;
+
+        simulateWorld(entities, timeframe, entityApi, fitnessScenario.input, currentFrame);
+
+        currentFrame = expectedPosition.frame;
+        var evaluatedFitness = fitnessScenario.fitness(expectedPosition, entity)
+
+        fitnesses[participant][individual][scenario].push(0);
+      });
+    }
   });
 
   return fittestEntities;
