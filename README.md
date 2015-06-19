@@ -25,7 +25,7 @@ My first major milestone is to make Pong. Here is the the stuff that needs to ha
 
  - [X] Support for multiple scenarios
  - [ ] Work on the genetic algorithm to weight entities that are good at one thing over ones that are average at many
- - [ ] Support for multiple entities in a scenario
+ - [X] Support for multiple entities in a scenario
  - [ ] A way for entities to check collisions with other entities
  - [ ] The above requires entities have a way to reference other entities
 
