@@ -1,6 +1,9 @@
 var _ = require('lodash');
 var getRandomInt = require('../lib/get-random-int');
 
+const COMMAND = 'command';
+const QUERY = 'query';
+
 function gt (a, b) {
   return a > b;
 }
@@ -63,6 +66,15 @@ function newNode (api) {
       }
     };
   };
+
+  if (actionSelector > 25) {
+    return (api, currentFrame) => {
+      // TODO - do something with collision results aside from checking length
+      if (api.checkCollision && api.checkCollision(currentFrame).length > 0) {
+        api.move(move);
+      };
+    }
+  }
 
   return (api) => {
     api.move(move);
