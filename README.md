@@ -24,8 +24,8 @@ Helix Pi is split into two separate repositories at the moment. This one, helix-
 My first major milestone is to make Pong. Here is the the stuff that needs to happen for me to get there:
 
  - [X] Support for multiple scenarios
- - [ ] Work on the genetic algorithm to weight entities that are good at one thing over ones that are average at many
+ - [X] Work on the genetic algorithm to weight entities that are good at one thing over ones that are average at many
  - [X] Support for multiple entities in a scenario
- - [ ] A way for entities to check collisions with other entities
- - [ ] The above requires entities have a way to reference other entities
+ - [X] A way for entities to check collisions with other entities
+ - [ ] Replace api.move with api.setVelocity and api.setDirection
 

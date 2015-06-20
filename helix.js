@@ -98,7 +98,7 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
   function boilDownIndividualScore (individual, participant, fitnesses) {
     return weightedAverage(
       _.values(fitnesses[participant][individual])
-        .map(scoresForScenario => _.sum(scoresForScenario))
+        .map(scoresForScenario => weightedAverage(scoresForScenario))
     );
   }
 
