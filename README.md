@@ -21,11 +21,4 @@ Yeah, exactly. So at the time of writing, I've made an game development tool tha
 
 Helix Pi is split into two separate repositories at the moment. This one, helix-pi, is a node module that evolves programs based on scenarios and an API to control characters. There is also [helix-pi-editor](Widdershin/helix-pi-editor), which is a Kiwi.js powered web editor. It's live at [helix-pi.net](http://helix-pi.net). It currently supports designing one scenario, where a character moves around, potentially in response to input.
 
-My first major milestone is to make Pong. Here is the the stuff that needs to happen for me to get there:
-
- - [X] Support for multiple scenarios
- - [X] Work on the genetic algorithm to weight entities that are good at one thing over ones that are average at many
- - [X] Support for multiple entities in a scenario
- - [X] A way for entities to check collisions with other entities
- - [ ] Replace api.move with api.setVelocity and api.setDirection
-
+My [first major milestone](https://github.com/Widdershin/helix-pi/milestones/Pong) is to make Pong.
