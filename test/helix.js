@@ -2,6 +2,10 @@ var run = require('../helix');
 var assert = require("assert");
 var _ = require('lodash');
 
+const UPDATE = 'update';
+const COMMAND = 'command';
+const QUERY = 'query';
+
 var fitnessScenarios = {
   participants: ['swordsunit', 'ball'],
 
@@ -82,35 +86,58 @@ var fitnessScenarios = {
   }
 };
 
-var api = function(entity, checkButtonDown) {
-  var self = {
-    move(coordinates) {
-      var oldX = entity.x;
-      entity.x += coordinates.x;
-      entity.y += coordinates.y;
-    },
+var api = function(entity, getButtonDown, checkCollision) {
+  var self = {};
 
+  function declareApiCall(name, options, f) {
+    f.type = options.type;
+    f.takes = options.takes;
+    f.returns = options.returns;
+
+    self[name] = f;
   }
 
-  function declareApiCall({takes, returns}, f) {
-    f.takes = takes;
-    f.returns = returns;
-    return f;
-  }
+  declareApiCall('update', {
+    type: UPDATE,
+    takes: null,
+    returns: null
+  }, function () {
+    entity.x += entity.velocity.x;
+    entity.y += entity.velocity.y;
+  });
 
-  self.checkButtonDown = declareApiCall({
-    takes: ['right', 'left'],
+  declareApiCall('setVelocity', {
+    type: COMMAND,
+    takes: {x: 0, y: 0},
+    returns: null
+  }, function (velocity) {
+    entity.velocity.x = velocity.x;
+    entity.velocity.y = velocity.y;
+  });
+
+  declareApiCall('checkButtonDown', {
+    type: QUERY,
+    takes: ['right', 'left', 'up', 'down'],
     returns: [true, false]
-  }, checkButtonDown);
+  }, getButtonDown);
 
-  self.getPosition = declareApiCall({
+  declareApiCall('getPosition', {
+    type: QUERY,
     takes: [],
-    returns: {x: 0, y: 0},
-  }, () => {
+    returns: {x: 0, y: 0}
+  }, function () {
     return {
       x: entity.x,
       y: entity.y
     };
+  });
+
+  declareApiCall('checkCollision', {
+    type: QUERY,
+    takes: null,
+    returns: []
+  }, function (currentFrame) {
+    return checkCollision(entity, currentFrame);
   });
 
   return self;

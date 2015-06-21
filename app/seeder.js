@@ -38,7 +38,7 @@ function newNode (api) {
     var buttonToCheck = _.sample(api.checkButtonDown.takes);
     return (api, currentFrame) => {
       if (api.checkButtonDown(buttonToCheck, currentFrame)) {
-        api.move(move);
+        api.setVelocity(move);
       }
     }
   }
@@ -60,9 +60,9 @@ function newNode (api) {
 
     return (api) => {
       if (condition(api)) {
-        api.move(move);
+        api.setVelocity(move);
       } else {
-        api.move(differentMove);
+        api.setVelocity(differentMove);
       }
     };
   };
@@ -71,18 +71,18 @@ function newNode (api) {
     return (api, currentFrame) => {
       // TODO - do something with collision results aside from checking length
       if (api.checkCollision && api.checkCollision(currentFrame).length > 0) {
-        api.move(move);
+        api.setVelocity(move);
       };
     }
   }
 
   return (api) => {
-    api.move(move);
+    api.setVelocity(move);
   };
 }
 
 function generateIndividual (api) {
-  var entropy = getRandomInt(1, 50);
+  var entropy = getRandomInt(1, 20);
 
   return _.chain(entropy).range().map(() => {
     return newNode(api);

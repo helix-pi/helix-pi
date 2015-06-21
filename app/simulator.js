@@ -48,6 +48,8 @@ function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
       _.each(entity.individual, function (gene) {
         gene(entityApi, currentFrame + frame);
       });
+
+      entityApi.update();
     });
   });
 }

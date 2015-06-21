@@ -15,16 +15,16 @@ var mean = function (array) {
   return _.sum(array) / array.length;
 };
 
-function run (fitnessScenarios, entityApi, generations=500, population=32, newbornIndividuals = []) {
+function run (fitnessScenarios, entityApi, generations=150, population=32, individuals = {}) {
   var scenarios = fitnessScenarios.scenarios;
   var entities;
   var fittestIndividuals = [];
 
   var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
 
-  var individuals = _.chain(fitnessScenarios.participants).map(participant => {
-    return [participant, []];
-  }).object().value();
+  _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
+    individuals[participant] = [];
+  });
 
   var fitnesses = _.chain(fitnessScenarios.participants).map(participant => {
     return [participant, {}];
@@ -75,13 +75,15 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
       }
     });
 
+    var activeEntity = entities.find(entity => entity.active);
+
     scenario.expectedPositions[participant].forEach(expectedPosition => {
       var frameCount = expectedPosition.frame - currentFrame;
 
       simulateWorld(entities, frameCount, entityApi, scenario.input, currentFrame);
 
       currentFrame = expectedPosition.frame;
-      var evaluatedFitness = fitnessScenarios.fitness(expectedPosition, entities[0])
+      var evaluatedFitness = fitnessScenarios.fitness(expectedPosition, activeEntity);
 
       fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
     });
@@ -92,7 +94,7 @@ function run (fitnessScenarios, entityApi, generations=500, population=32, newbo
   }
 
   function weightedAverage (scoresPerScenario) {
-    return _.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2)));
+    return Math.sqrt(_.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2))) / scoresPerScenario.length);
   }
 
   function boilDownIndividualScore (individual, participant, fitnesses) {

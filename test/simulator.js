@@ -6,15 +6,19 @@ describe('simulateWorld', () => {
   it('simulates an individual', () => {
     var individual = [
       (function (api) {
-        api.move({x: 1, y: 0});
+        api.setVelocity({x: 1, y: 0});
       })
     ];
 
     var api = function(entity) {
       return {
-        move (coords) {
-          entity.x += coords.x;
-          entity.y += coords.y;
+        setVelocity (velocity) {
+          entity.velocity = velocity;
+        },
+
+        update () {
+          entity.x += entity.velocity.x;
+          entity.y += entity.velocity.y;
         }
       };
     };

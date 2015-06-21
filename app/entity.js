@@ -3,8 +3,10 @@ class Entity {
     this.individual = individual;
     this.x = startingPosition.x;
     this.y = startingPosition.y;
+    this.velocity = {x: 0, y: 0};
     this.fitnessPerPosition = [];
     this.positions = [startingPosition].concat(expectedPositions);
+    this.active = active;
   }
 
   moveToFrame (frame) {
@@ -21,7 +23,7 @@ class Entity {
 
     var that = this;
     var getPositionAt = function (positions, frameToFind) {
-      var totalFrames = _.last(this.positions).frame;
+      var totalFrames = _.last(that.positions).frame;
 
       if (frameToFind > totalFrames) {
         return false;
@@ -39,12 +41,9 @@ class Entity {
 
         if (frameToFind >= position.frame && frameToFind < nextPosition.frame) {
           // if you read this code I am a bit sorry
-          var startPositionRatio = position.frame / totalFrames;
-          var nextPositionRatio = nextPosition.frame / totalFrames;
+          var duration = position.frame - nextPosition.frame;
 
-          var duration = nextPositionRatio - startPositionRatio;
-
-          return lerp(position, nextPosition, (ratio - startPositionRatio) / duration);
+          return lerp(position, nextPosition, (frame - position.frame) / duration);
         }
       }
 
