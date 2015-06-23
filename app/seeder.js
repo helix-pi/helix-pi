@@ -22,35 +22,48 @@ function compare (operators, a, b) {
   return (api) => { return operator(a(api), b(api)); };
 }
 
-function newNode (api) {
-  var move = {
-    x: getRandomInt(-10, 10),
-    y: getRandomInt(-10, 10)
-  };
+function getRandomCommand (api) {
+  var command = _.sample(['setVelocity', 'stop']);
 
+  if (command === 'setVelocity') {
+    var velocity = {
+      x: getRandomInt(-10, 10),
+      y: getRandomInt(-10, 10)
+    };
+
+    return (api) => {
+      api.setVelocity(velocity);
+    };
+  }
+
+  if (command === 'stop') {
+    return (api) => api.stop();
+  };
+}
+
+function newNode (api) {
   var actionSelector = getRandomInt(0, 100);
 
   var randomX = getRandomInt(0, 600);
   var randomY = getRandomInt(0, 400);
+
+  var command = getRandomCommand(api);
+  var alternateCommand = getRandomCommand(api);
+
 
   // There is a 20% chance to emit a node that operates as a NOP if a button is not down
   if (api.checkButtonDown && actionSelector > 80) {
     var buttonToCheck = _.sample(api.checkButtonDown.takes);
     return (api, currentFrame) => {
       if (api.checkButtonDown(buttonToCheck, currentFrame)) {
-        api.setVelocity(move);
+        command(api);
       }
-    }
+    };
   }
 
   // There is a 30% chance to emit a node that picks between two nodes depending on an XY position
   // The paucity of this - in a history sense - is probably why circles are so awful
   if (actionSelector > 50) {
-    var differentMove = {
-      x: getRandomInt(-10, 10),
-      y: getRandomInt(-10, 10)
-    };
-
     var attributeToCompare = randomAttribute(api.getPosition.returns);
     var condition = compare(
       [gt, lt],
@@ -60,9 +73,9 @@ function newNode (api) {
 
     return (api) => {
       if (condition(api)) {
-        api.setVelocity(move);
+        command(api);
       } else {
-        api.setVelocity(differentMove);
+        alternateCommand(api);
       }
     };
   };
@@ -71,13 +84,13 @@ function newNode (api) {
     return (api, currentFrame) => {
       // TODO - do something with collision results aside from checking length
       if (api.checkCollision && api.checkCollision(currentFrame).length > 0) {
-        api.setVelocity(move);
+        command(api);
       };
     }
   }
 
   return (api) => {
-    api.setVelocity(move);
+    command(api);
   };
 }
 
