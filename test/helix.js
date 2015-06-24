@@ -86,7 +86,7 @@ var fitnessScenarios = {
   }
 };
 
-var api = function(entity, getButtonDown, checkCollision) {
+var api = function(entity, implementation) {
   var self = {};
 
   function declareApiCall(name, options, f) {
@@ -111,8 +111,7 @@ var api = function(entity, getButtonDown, checkCollision) {
     takes: {x: 0, y: 0},
     returns: null
   }, function (velocity) {
-    entity.velocity.x = velocity.x;
-    entity.velocity.y = velocity.y;
+    entity.velocity = velocity;
   });
 
   declareApiCall('stop', {
@@ -127,7 +126,13 @@ var api = function(entity, getButtonDown, checkCollision) {
     type: QUERY,
     takes: ['right', 'left', 'up', 'down'],
     returns: [true, false]
-  }, getButtonDown);
+  }, implementation.checkButtonDown);
+
+  declareApiCall('checkButtonReleased', {
+    type: QUERY,
+    takes: ['right', 'left', 'up', 'down'],
+    returns: [true, false],
+  }, implementation.checkButtonReleased);
 
   declareApiCall('getPosition', {
     type: QUERY,
@@ -145,7 +150,7 @@ var api = function(entity, getButtonDown, checkCollision) {
     takes: null,
     returns: []
   }, function (currentFrame) {
-    return checkCollision(entity, currentFrame);
+    return implementation.checkCollision(entity, currentFrame);
   });
 
   return self;

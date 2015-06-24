@@ -1,13 +1,23 @@
 var _ = require('lodash');
+var memoize = require('memoizee');
 
 function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
-  function getButtonDown(button, currentFrame) {
+  var checkButtonDown = memoize((button, currentFrame) => {
     return input.filter((buttonPress) => {
       return buttonPress.key === button &&
              buttonPress.startFrame < currentFrame &&
              buttonPress.endFrame > currentFrame;
     }).length > 0;
-  }
+  });
+
+  var checkButtonReleased = memoize((button, currentFrame, inLastNumberOfFrames = 12) => {
+    if (currentFrame < inLastNumberOfFrames) {
+      return false;
+    }
+
+    return !checkButtonDown(button, currentFrame) &&
+            checkButtonDown(button, currentFrame - inLastNumberOfFrames);
+  });
 
   function distance (entityA, entityB) {
     var distanceVector = {
@@ -38,12 +48,15 @@ function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
         distance(entity, entityToCheck) < collisionDistance
       );
     });
-
   }
 
   _.times(numberOfFrames, (frame) => {
     _.each(entities, (entity) => {
-      var entityApi = api(entity, getButtonDown, checkCollision);
+      var entityApi = api(entity, {
+        checkButtonDown,
+        checkButtonReleased,
+        checkCollision
+      });
 
       _.each(entity.individual, function (gene) {
         gene(entityApi, currentFrame + frame);

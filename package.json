@@ -4,14 +4,13 @@
   "description": "Accessible game development, powered by genetic programming",
   "dependencies": {
     "babel": "^5.2.15",
-    "lodash": "^3.8.0"
+    "lodash": "^3.8.0",
+    "memoizee": "^0.3.8"
   },
   "scripts": {
     "test": "mocha --compilers js:babel/register"
   },
-
-  "main": "./helix.js" ,
-
+  "main": "./helix.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/widdershin/helix-pi.git"

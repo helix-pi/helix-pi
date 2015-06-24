@@ -20,8 +20,6 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
   var entities;
   var fittestIndividuals = [];
 
-  var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
-
   _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
     individuals[participant] = [];
   });
@@ -42,14 +40,17 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
     individuals[participant].forEach(individual => { scoreIndividualOnScenario(scenario, participant, individual, fitnesses) });
   }
 
-  function fillInIndividuals(compiledApi, individuals) {
+  function fillInIndividuals(individuals) {
+    var blankFunction = () => null;
+    var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), {checkButtonDown: blankFunction, checkButtonReleased: blankFunction, checkCollision: blankFunction}); // TODO - fix this hack
+
     fitnessScenarios.participants.forEach(participant => {
       var existing = individuals[participant];
       if (existing === undefined) {
         individuals[participant] = existing = [];
       };
 
-      individuals[participant] = existing.concat(Seeder.make(compiledApi, population - existing.length));
+      individuals[participant] = existing.concat(Seeder.make(entityApi, population - existing.length));
     });
   }
 
@@ -128,7 +129,7 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
   }
 
   _.times(generations, generation => {
-    fillInIndividuals(compiledApi, individuals);
+    fillInIndividuals(individuals);
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
