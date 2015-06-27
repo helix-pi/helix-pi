@@ -19,10 +19,11 @@ function randomAttribute (object) {
 function compare (operators, a, b) {
   var operator = _.sample(operators);
 
-  return (api) => { return operator(a(api), b(api)); };
+  return (entity, api) => { return operator(a(entity, api), b(entity, api)); };
 }
 
-function getRandomCommand (api) {
+// TODO - genericize
+function getRandomCommand (schema) {
   var command = _.sample(['setVelocity', 'stop']);
 
   if (command === 'setVelocity') {
@@ -31,34 +32,35 @@ function getRandomCommand (api) {
       y: getRandomInt(-10, 10)
     };
 
-    return (api) => {
-      api.setVelocity(velocity);
+    return (entity, api) => {
+      api.setVelocity(entity, velocity);
     };
   }
 
   if (command === 'stop') {
-    return (api) => api.stop();
+    return (entity, api) => api.stop(entity);
   };
 }
 
-function newNode (api) {
+function newNode (schema) {
   var actionSelector = getRandomInt(0, 100);
 
   var randomX = getRandomInt(0, 600);
   var randomY = getRandomInt(0, 400);
 
-  var command = getRandomCommand(api);
-  var alternateCommand = getRandomCommand(api);
+  var command = getRandomCommand(schema);
+  var alternateCommand = getRandomCommand(schema);
 
 
   // There is a 20% chance to emit a node that operates as a NOP if a button is not down
-  if (api.checkButtonDown && actionSelector > 80) {
-    var buttonToCheck = _.sample(api.checkButtonDown.takes);
-    var buttonQuery = _.sample([api.checkButtonDown, api.checkButtonReleased]);
+  if (schema.checkButtonDown && actionSelector > 80) {
+    var buttonToCheck = _.sample(schema.checkButtonDown.takes);
+    var buttonQuery = _.sample(['checkButtonDown', 'checkButtonReleased']);
 
-    return (api, currentFrame) => {
-      if (buttonQuery(buttonToCheck, currentFrame)) {
-        command(api);
+    return (entity, api, currentFrame) => {
+      console.log('me', buttonToCheck, currentFrame);
+      if (api[buttonQuery](entity, buttonToCheck, currentFrame)) {
+        command(entity, api);
       }
     };
   }
@@ -66,48 +68,48 @@ function newNode (api) {
   // There is a 30% chance to emit a node that picks between two nodes depending on an XY position
   // The paucity of this - in a history sense - is probably why circles are so awful
   if (actionSelector > 50) {
-    var attributeToCompare = randomAttribute(api.getPosition.returns);
+    var attributeToCompare = randomAttribute(schema.getPosition.returns);
     var condition = compare(
       [gt, lt],
-      function (api) { return api.getPosition()[attributeToCompare]; },
-      function (api) { return _.sample([randomX, randomY]); }
+      function (entity, api) { return api.getPosition(entity)[attributeToCompare]; },
+      function (entity, api) { return _.sample([randomX, randomY]); }
     );
 
-    return (api) => {
-      if (condition(api)) {
-        command(api);
+    return (entity, api) => {
+      if (condition(entity, api)) {
+        command(entity, api);
       } else {
-        alternateCommand(api);
+        alternateCommand(entity, api);
       }
     };
   };
 
   if (actionSelector > 25) {
-    return (api, currentFrame) => {
+    return (entity, api, currentFrame) => {
       // TODO - do something with collision results aside from checking length
-      if (api.checkCollision && api.checkCollision(currentFrame).length > 0) {
-        command(api);
+      if (api.checkCollision && api.checkCollision(entity, currentFrame).length > 0) {
+        command(entity, api);
       };
     }
   }
 
-  return (api) => {
-    command(api);
+  return (entity, api) => {
+    command(entity, api);
   };
 }
 
-function generateIndividual (api) {
+function generateIndividual (schema) {
   var entropy = getRandomInt(1, 20);
 
   return _.chain(entropy).range().map(() => {
-    return newNode(api);
+    return newNode(schema);
   }).value();
 }
 
 var Seeder = {
-  make (api, numberOfIndividuals) {
+  make (schema, numberOfIndividuals) {
     return _.chain(numberOfIndividuals).range().map(() => {
-      return generateIndividual(api);
+      return generateIndividual(schema);
     }).value();
   }
 };

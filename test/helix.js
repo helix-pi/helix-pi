@@ -2,10 +2,6 @@ var run = require('../helix');
 var assert = require("assert");
 var _ = require('lodash');
 
-const UPDATE = 'update';
-const COMMAND = 'command';
-const QUERY = 'query';
-
 var fitnessScenarios = {
   participants: ['swordsunit', 'ball'],
 
@@ -86,80 +82,10 @@ var fitnessScenarios = {
   }
 };
 
-var api = function(entity, implementation) {
-  var self = {};
-
-  function declareApiCall(name, options, f) {
-    f.type = options.type;
-    f.takes = options.takes;
-    f.returns = options.returns;
-
-    self[name] = f;
-  }
-
-  declareApiCall('update', {
-    type: UPDATE,
-    takes: null,
-    returns: null
-  }, function () {
-    entity.x += entity.velocity.x;
-    entity.y += entity.velocity.y;
-  });
-
-  declareApiCall('setVelocity', {
-    type: COMMAND,
-    takes: {x: 0, y: 0},
-    returns: null
-  }, function (velocity) {
-    entity.velocity = velocity;
-  });
-
-  declareApiCall('stop', {
-    type: COMMAND,
-    takes: null,
-    returns: null
-  }, function () {
-    entity.velocity = {x: 0, y: 0};
-  });
-
-  declareApiCall('checkButtonDown', {
-    type: QUERY,
-    takes: ['right', 'left', 'up', 'down'],
-    returns: [true, false]
-  }, implementation.checkButtonDown);
-
-  declareApiCall('checkButtonReleased', {
-    type: QUERY,
-    takes: ['right', 'left', 'up', 'down'],
-    returns: [true, false],
-  }, implementation.checkButtonReleased);
-
-  declareApiCall('getPosition', {
-    type: QUERY,
-    takes: [],
-    returns: {x: 0, y: 0}
-  }, function () {
-    return {
-      x: entity.x,
-      y: entity.y
-    };
-  });
-
-  declareApiCall('checkCollision', {
-    type: QUERY,
-    takes: null,
-    returns: []
-  }, function (currentFrame) {
-    return implementation.checkCollision(entity, currentFrame);
-  });
-
-  return self;
-};
-
 
 describe('Helix', () => {
   describe('#run', () => {
-    var results = run(fitnessScenarios, api);
+    var results = run(fitnessScenarios);
 
     it('returns an array of entities with fitnesses', () => {
       assert(!isNaN(results['swordsunit'][0].fitness));
