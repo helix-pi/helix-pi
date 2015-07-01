@@ -1,13 +1,14 @@
 var _ = require('lodash');
+var createApi = require('./api');
 
-function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
-  function getButtonDown(button, currentFrame) {
-    return input.filter((buttonPress) => {
+function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
+  var checkButtonDown = function (entity, button, currentFrame) {
+    var result = input.filter((buttonPress) => {
       return buttonPress.key === button &&
              buttonPress.startFrame < currentFrame &&
              buttonPress.endFrame > currentFrame;
     }).length > 0;
-  }
+  };
 
   function distance (entityA, entityB) {
     var distanceVector = {
@@ -15,7 +16,7 @@ function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
       y: Math.abs(entityA.y - entityB.y)
     };
 
-    return distance.x + distance.y;
+    return Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
   }
 
   function tweenEntity (entity, currentFrame) {
@@ -38,18 +39,22 @@ function simulateWorld (entities, numberOfFrames, api, input, currentFrame) {
         distance(entity, entityToCheck) < collisionDistance
       );
     });
-
   }
 
-  _.times(numberOfFrames, (frame) => {
-    _.each(entities, (entity) => {
-      var entityApi = api(entity, getButtonDown, checkCollision);
+  var api = createApi({
+    checkCollision,
+    checkButtonDown
+  });
 
+  var activeEntities = entities.filter(entity => entity.active);
+
+  _.times(numberOfFrames, (frame) => {
+    _.each(activeEntities, (entity) => {
       _.each(entity.individual, function (gene) {
-        gene(entityApi, currentFrame + frame);
+        gene(entity, api, currentFrame + frame);
       });
 
-      entityApi.update();
+      api.update(entity);
     });
   });
 }

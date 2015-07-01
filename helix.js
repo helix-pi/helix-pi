@@ -2,6 +2,7 @@ var breed = require('./app/breeding');
 var Seeder = require('./app/seeder');
 var Entity = require('./app/entity');
 var simulateWorld = require('./app/simulator');
+var createApi = require('./app/api');
 
 var _ = require('lodash');
 
@@ -15,12 +16,17 @@ var mean = function (array) {
   return _.sum(array) / array.length;
 };
 
-function run (fitnessScenarios, entityApi, generations=150, population=32, individuals = {}) {
+function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
   var scenarios = fitnessScenarios.scenarios;
   var entities;
   var fittestIndividuals = [];
 
-  var compiledApi = entityApi(new Entity([], {x: 100, y: 100}), function () {}); // TODO - fix this hack
+  function createStub () { return function stub () { throw 'you no execute me'; }; };
+  var stubApi = createApi({
+    checkCollision: createStub(),
+    checkButtonDown: createStub(),
+    checkButtonReleased: createStub()
+  });
 
   _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
     individuals[participant] = [];
@@ -42,14 +48,16 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
     individuals[participant].forEach(individual => { scoreIndividualOnScenario(scenario, participant, individual, fitnesses) });
   }
 
-  function fillInIndividuals(compiledApi, individuals) {
+  function fillInIndividuals(individuals) {
+    var blankFunction = () => null;
+
     fitnessScenarios.participants.forEach(participant => {
       var existing = individuals[participant];
       if (existing === undefined) {
         individuals[participant] = existing = [];
       };
 
-      individuals[participant] = existing.concat(Seeder.make(compiledApi, population - existing.length));
+      individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
     });
   }
 
@@ -75,12 +83,12 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
       }
     });
 
-    var activeEntity = entities.find(entity => entity.active);
+    var activeEntity = _.find(entities, 'active');
 
     scenario.expectedPositions[participant].forEach(expectedPosition => {
       var frameCount = expectedPosition.frame - currentFrame;
 
-      simulateWorld(entities, frameCount, entityApi, scenario.input, currentFrame);
+      simulateWorld(entities, frameCount, scenario.input, currentFrame);
 
       currentFrame = expectedPosition.frame;
       var evaluatedFitness = fitnessScenarios.fitness(expectedPosition, activeEntity);
@@ -120,7 +128,7 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
     fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
       .concat(fittestIndividuals)
       .sort((a, b) => b.fitness - a.fitness)
-      .slice(0, Math.ceil(population / 2));
+      .slice(0, Math.ceil(population / 4));
 
     var breedingPairs = eachSlice(fittestIndividuals, 2);
 
@@ -128,7 +136,7 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
   }
 
   _.times(generations, generation => {
-    fillInIndividuals(compiledApi, individuals);
+    fillInIndividuals(individuals);
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
@@ -146,5 +154,7 @@ function run (fitnessScenarios, entityApi, generations=150, population=32, indiv
 
   return fittestIndividualsOfAllTime;
 }
+
+run.createApi = createApi; // TODO - something better than this surely
 
 module.exports = run;
