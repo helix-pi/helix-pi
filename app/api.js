@@ -55,12 +55,6 @@ function createApi (implementation) {
     returns: [true, false]
   }, implementation.checkButtonDown);
 
-  declareApiCall('checkButtonReleased', {
-    type: QUERY,
-    takes: ['right', 'left', 'up', 'down'],
-    returns: [true, false],
-  }, implementation.checkButtonReleased);
-
   declareApiCall('checkCollision', {
     type: QUERY,
     takes: null,

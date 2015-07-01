@@ -83,7 +83,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
       }
     });
 
-    var activeEntity = entities.find(entity => entity.active);
+    var activeEntity = _.find(entities, 'active');
 
     scenario.expectedPositions[participant].forEach(expectedPosition => {
       var frameCount = expectedPosition.frame - currentFrame;

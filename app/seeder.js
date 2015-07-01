@@ -55,10 +55,9 @@ function newNode (schema) {
   // There is a 20% chance to emit a node that operates as a NOP if a button is not down
   if (schema.checkButtonDown && actionSelector > 80) {
     var buttonToCheck = _.sample(schema.checkButtonDown.takes);
-    var buttonQuery = _.sample(['checkButtonDown', 'checkButtonReleased']);
+    var buttonQuery = _.sample(['checkButtonDown']);
 
     return (entity, api, currentFrame) => {
-      console.log('me', buttonToCheck, currentFrame);
       if (api[buttonQuery](entity, buttonToCheck, currentFrame)) {
         command(entity, api);
       }

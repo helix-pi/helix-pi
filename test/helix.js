@@ -85,7 +85,7 @@ var fitnessScenarios = {
 
 describe('Helix', () => {
   describe('#run', () => {
-    var results = run(fitnessScenarios);
+    var results = run(fitnessScenarios, 20);
 
     it('returns an array of entities with fitnesses', () => {
       assert(!isNaN(results['swordsunit'][0].fitness));

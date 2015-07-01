@@ -1,5 +1,4 @@
 var _ = require('lodash');
-var memoize = require('memoizee');
 var createApi = require('./api');
 
 function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
@@ -9,18 +8,6 @@ function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
              buttonPress.startFrame < currentFrame &&
              buttonPress.endFrame > currentFrame;
     }).length > 0;
-
-    console.log({button, currentFrame, result});
-    return result;
-  };
-
-  var checkButtonReleased = function (entity, button, currentFrame, inLastNumberOfFrames = 12) {
-    if (currentFrame < inLastNumberOfFrames) {
-      return false;
-    }
-
-    return !checkButtonDown(button, currentFrame) &&
-            checkButtonDown(button, currentFrame - inLastNumberOfFrames);
   };
 
   function distance (entityA, entityB) {
@@ -29,7 +16,7 @@ function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
       y: Math.abs(entityA.y - entityB.y)
     };
 
-    return distance.x + distance.y;
+    return Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
   }
 
   function tweenEntity (entity, currentFrame) {
@@ -56,8 +43,7 @@ function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
 
   var api = createApi({
     checkCollision,
-    checkButtonDown,
-    checkButtonReleased
+    checkButtonDown
   });
 
   var activeEntities = entities.filter(entity => entity.active);
