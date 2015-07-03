@@ -36,4 +36,24 @@ describe('simulateWorld', () => {
 
     assert.equal(entity.x, 0);
   });
+
+  it('simulates collision', () => {
+    var hasCollided = false;
+
+    var individual = [
+      (function (entity, api, currentFrame) {
+        api.setVelocity({x: 10, y: 0});
+        if (api.checkCollision()) {
+          hasCollided = true;
+        }
+      })
+    ];
+
+    var entity = new Entity(individual, {x: 0, y: 0}, [], true);
+    var entityToCollideAgainst = new Entity([], {x: 80, y: 0}, [], false);
+
+    simulateWorld([entity, entityToCollideAgainst], 10, []);
+
+    assert(hasCollided);
+  });
 });
