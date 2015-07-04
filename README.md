@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/Widdershin/helix-pi.png?label=ready&title=Ready)](https://waffle.io/Widdershin/helix-pi)
 # helix-pi
 Accessible game development, powered by genetic programming
 
