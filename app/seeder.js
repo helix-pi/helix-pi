@@ -43,7 +43,12 @@ function getRandomCommand (schema) {
   };
 
   if (command === 'applyForce') {
-    let force = {x: getRandomFloat(-5, 5), y: getRandomFloat(-5, 5)};
+    const forceRange = 0.5;
+    const force = {
+      x: getRandomFloat(-forceRange, forceRange),
+      y: getRandomFloat(-forceRange, forceRange)
+    };
+
     return (entity, api) => api.applyForce(entity, force);
   };
 }
