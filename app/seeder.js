@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var getRandomFloat = require('../lib/get-random-float');
 var getRandomInt = require('../lib/get-random-int');
 
 const COMMAND = 'command';
@@ -24,7 +25,7 @@ function compare (operators, a, b) {
 
 // TODO - genericize
 function getRandomCommand (schema) {
-  var command = _.sample(['setVelocity', 'stop']);
+  var command = _.sample(['setVelocity', 'stop', 'applyForce']);
 
   if (command === 'setVelocity') {
     var velocity = {
@@ -39,6 +40,11 @@ function getRandomCommand (schema) {
 
   if (command === 'stop') {
     return (entity, api) => api.stop(entity);
+  };
+
+  if (command === 'applyForce') {
+    let force = {x: getRandomFloat(-5, 5), y: getRandomFloat(-5, 5)};
+    return (entity, api) => api.applyForce(entity, force);
   };
 }
 
