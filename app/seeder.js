@@ -23,6 +23,31 @@ function compare (operators, a, b) {
   return (entity, api) => { return operator(a(entity, api), b(entity, api)); };
 }
 
+function positionConditional (schema) {
+  const randomX = getRandomInt(0, 600);
+  const randomY = getRandomInt(0, 400);
+  const positionToCheck = _.sample([randomX, randomY]);
+  const attributeToCompare = randomAttribute(schema.getPosition.returns);
+
+  return compare(
+    [gt, lt],
+    (entity, api) => api.getPosition(entity)[attributeToCompare],
+    (entity, api) => positionToCheck
+  );
+}
+
+function collisionConditional (schema) {
+  return (entity, api, currentFrame) => api.checkCollision(entity, currentFrame);
+}
+
+function generateConditional (schema) {
+  return _.sample([
+    positionConditional(schema),
+    collisionConditional(schema)
+  ]);
+}
+
+
 // TODO - genericize
 function getRandomCommand (schema) {
   var command = _.sample(['setVelocity', 'stop', 'applyForce']);
@@ -56,8 +81,6 @@ function getRandomCommand (schema) {
 function newNode (schema) {
   var actionSelector = getRandomInt(0, 100);
 
-  var randomX = getRandomInt(0, 600);
-  var randomY = getRandomInt(0, 400);
 
   var command = getRandomCommand(schema);
   var alternateCommand = getRandomCommand(schema);
@@ -78,15 +101,10 @@ function newNode (schema) {
   // There is a 30% chance to emit a node that picks between two nodes depending on an XY position
   // The paucity of this - in a history sense - is probably why circles are so awful
   if (actionSelector > 50) {
-    var attributeToCompare = randomAttribute(schema.getPosition.returns);
-    var condition = compare(
-      [gt, lt],
-      function (entity, api) { return api.getPosition(entity)[attributeToCompare]; },
-      function (entity, api) { return _.sample([randomX, randomY]); }
-    );
+    let condition = generateConditional(schema);
 
-    return (entity, api) => {
-      if (condition(entity, api)) {
+    return (entity, api, currentFrame) => {
+      if (condition(entity, api, currentFrame)) {
         command(entity, api);
       } else {
         alternateCommand(entity, api);
