@@ -56,4 +56,18 @@ describe('simulateWorld', () => {
 
     assert(hasCollided);
   });
+
+  it('applies force', () => {
+    var individual = [
+      (function (entity, api, currentFrame) {
+        api.applyForce(entity, {x: 1, y: 0});
+      })
+    ];
+
+    var entity = new Entity(individual, {x: 0, y: 0}, [], true);
+
+    simulateWorld([entity], 5, []);
+
+    assert.equal(entity.x, 15);
+  });
 });
