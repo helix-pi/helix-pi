@@ -20,7 +20,7 @@ function randomAttribute (object) {
 function compare (operators, a, b) {
   var operator = _.sample(operators);
 
-  return (entity, api) => { return operator(a(entity, api), b(entity, api)); };
+  return (entity, api) => operator(a(entity, api), b(entity, api));
 }
 
 function positionConditional (schema) {
@@ -40,11 +40,19 @@ function collisionConditional (schema) {
   return (entity, api, currentFrame) => api.checkCollision(entity, currentFrame);
 }
 
+function inputConditional (schema) {
+  const buttonToCheck = _.sample(schema.checkButtonDown.takes);
+  const buttonQuery = _.sample(['checkButtonDown']);
+
+  return (entity, api, currentFrame) => api[buttonQuery](entity, buttonToCheck, currentFrame);
+}
+
 function generateConditional (schema) {
   return _.sample([
-    positionConditional(schema),
-    collisionConditional(schema)
-  ]);
+    positionConditional,
+    collisionConditional,
+    inputConditional
+  ])(schema);
 }
 
 
@@ -68,7 +76,7 @@ function getRandomCommand (schema) {
   };
 
   if (command === 'applyForce') {
-    const forceRange = 0.5;
+    const forceRange = 0.3;
     const force = {
       x: getRandomFloat(-forceRange, forceRange),
       y: getRandomFloat(-forceRange, forceRange)
@@ -78,53 +86,42 @@ function getRandomCommand (schema) {
   };
 }
 
+function unconditional (schema, command) {
+  return (entity, api) => command(entity, api);
+};
+
+function conditional (schema, command) {
+  const conditionalToCheck = generateConditional(schema);
+
+  return (entity, api, currentFrame) => {
+    if (conditionalToCheck(entity, api, currentFrame)) {
+      command(entity, api);
+    };
+  };
+}
+
+function ifElse (schema, command, alternateCommand) {
+  const conditionalToCheck = generateConditional(schema);
+
+  return (entity, api, currentFrame) => {
+    if (conditionalToCheck(entity, api, currentFrame)) {
+      command(entity, api);
+    } else {
+      alternateCommand(entity, api);
+    };
+  };
+}
+
 function newNode (schema) {
-  var actionSelector = getRandomInt(0, 100);
-
-
   var command = getRandomCommand(schema);
   var alternateCommand = getRandomCommand(schema);
 
-
-  // There is a 20% chance to emit a node that operates as a NOP if a button is not down
-  if (schema.checkButtonDown && actionSelector > 80) {
-    var buttonToCheck = _.sample(schema.checkButtonDown.takes);
-    var buttonQuery = _.sample(['checkButtonDown']);
-
-    return (entity, api, currentFrame) => {
-      if (api[buttonQuery](entity, buttonToCheck, currentFrame)) {
-        command(entity, api);
-      }
-    };
-  }
-
-  // There is a 30% chance to emit a node that picks between two nodes depending on an XY position
-  // The paucity of this - in a history sense - is probably why circles are so awful
-  if (actionSelector > 50) {
-    let condition = generateConditional(schema);
-
-    return (entity, api, currentFrame) => {
-      if (condition(entity, api, currentFrame)) {
-        command(entity, api);
-      } else {
-        alternateCommand(entity, api);
-      }
-    };
-  };
-
-  if (actionSelector > 25) {
-    return (entity, api, currentFrame) => {
-      // TODO - do something with collision results aside from checking length
-      if (api.checkCollision && api.checkCollision(entity, currentFrame).length > 0) {
-        command(entity, api);
-      };
-    }
-  }
-
-  return (entity, api) => {
-    command(entity, api);
-  };
-}
+  return _.sample([
+    unconditional,
+    conditional,
+    ifElse
+  ])(schema, command, alternateCommand);
+};
 
 function generateIndividual (schema) {
   var entropy = getRandomInt(1, 20);
