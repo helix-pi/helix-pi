@@ -1,3 +1,5 @@
+var _ = require('lodash');
+
 class Entity {
   constructor (individual, startingPosition, expectedPositions = [], active = false) {
     this.individual = individual;

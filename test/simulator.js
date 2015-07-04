@@ -43,7 +43,7 @@ describe('simulateWorld', () => {
     var individual = [
       (function (entity, api, currentFrame) {
         api.setVelocity({x: 10, y: 0});
-        if (api.checkCollision()) {
+        if (api.checkCollision(entity, currentFrame)) {
           hasCollided = true;
         }
       })
