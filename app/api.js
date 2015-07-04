@@ -30,6 +30,15 @@ function createApi (implementation) {
     entity.velocity = velocity;
   });
 
+  declareApiCall('applyForce', {
+    type: COMMAND,
+    takes: {x: 0, y: 0},
+    returns: null
+  }, function (entity, velocity) {
+    entity.velocity.x += velocity.x;
+    entity.velocity.y += velocity.y;
+  });
+
   declareApiCall('stop', {
     type: COMMAND,
     takes: null,
