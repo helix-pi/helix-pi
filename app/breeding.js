@@ -1,8 +1,10 @@
-function breed (mum, dad) {
-  var totalGenes = mum.length + dad.length;
+var getRandomInt = require('../lib/get-random-int');
 
-  var genes = mum.concat(dad);
-  var midPoint = Math.floor(totalGenes / 2);
+function breed (mum, dad) {
+  const genes = mum.concat(dad);
+
+  // A random position across the combined genes, excluding the first and last gne
+  const midPoint = getRandomInt(1, genes.length - 2);
 
   return [
     genes.slice(0, midPoint),
