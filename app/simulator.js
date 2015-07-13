@@ -52,6 +52,9 @@ function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
   _.times(numberOfFrames, (frame) => {
     _.each(activeEntities, (entity) => {
       _.each(entity.individual, function (gene) {
+        console.log(gene.toString());
+        console.log(gene.f.toString());
+        console.log(gene.args);
         gene(entity, api, currentFrame + frame);
       });
 

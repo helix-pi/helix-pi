@@ -1,20 +1,37 @@
 
 function serialize (individual) {
-  return JSON.stringify(individual.map(f => f.toString()));
+  const brokenDownGenes = individual.map(gene => {
+    return {
+      func: (gene.f || gene).toString(),
+      args: gene.args
+    }
+  });
+
+  return JSON.stringify(brokenDownGenes);
 }
 
 function deserialize (str) {
   return JSON.parse(str).map(serializedGene => {
-    const startArgs = serializedGene.indexOf('(') + 1;
-    const startBody = serializedGene.indexOf('{') + 1;
+    const serializedFunction = serializedGene.func;
+    const startArgs = serializedFunction.indexOf('(') + 1;
+    const startBody = serializedFunction.indexOf('{') + 1;
 
-    const endArgs = serializedGene.indexOf(')');
-    const endBody = serializedGene.lastIndexOf('}');
+    const endArgs = serializedFunction.indexOf(')');
+    const endBody = serializedFunction.lastIndexOf('}');
 
-    const args = serializedGene.substring(startArgs, endArgs);
-    const body = serializedGene.substring(startBody, endBody);
+    const args = serializedFunction.substring(startArgs, endArgs);
+    const body = serializedFunction.substring(startBody, endBody);
 
-    return new Function(args, body);
+    const f = new Function(args, body);
+
+    const wrapper = (entity, api, currentFrame) => {
+      return f(entity, api, Object.assign(serializedGene.args, {currentFrame}));
+    };
+
+    wrapper.f = f;
+    wrapper.args = serializedGene.args;
+
+    return wrapper;
   });
 }
 

@@ -55,20 +55,31 @@ function generateConditional (schema) {
   ])(schema);
 }
 
+function functionWithPackedArgs (args, f) {
+  const wrapper = (entity, api, currentFrame) => {
+    f(entity, api, Object.assign(args, {currentFrame}));
+  };
+
+  wrapper.f = f;
+  wrapper.args = args;
+
+  return wrapper;
+}
+
 
 // TODO - genericize
 function getRandomCommand (schema) {
   var command = _.sample(['setVelocity', 'stop', 'applyForce']);
 
   if (command === 'setVelocity') {
-    var velocity = {
+    const velocity = {
       x: getRandomInt(-10, 10),
       y: getRandomInt(-10, 10)
     };
 
-    return (entity, api) => {
+    return functionWithPackedArgs({velocity}, (entity, api, {velocity}) => {
       api.setVelocity(entity, velocity);
-    };
+    });
   }
 
   if (command === 'stop') {
@@ -82,34 +93,44 @@ function getRandomCommand (schema) {
       y: getRandomFloat(-forceRange, forceRange)
     };
 
-    return (entity, api) => api.applyForce(entity, force);
+    return functionWithPackedArgs({force}, (entity, api, {force}) =>
+      api.applyForce(entity, force)
+    );
   };
 }
 
+function _unconditional (entity, api) {
+  command(entity, api);
+}
+
 function unconditional (schema, command) {
-  return (entity, api) => command(entity, api);
+  return functionWithPackedArgs({command}, _unconditional);
+};
+
+function _conditional (entity, api, {currentFrame, conditionalToCheck, command}) {
+  if (conditionalToCheck(entity, api, currentFrame)) {
+    command(entity, api);
+  };
 };
 
 function conditional (schema, command) {
   const conditionalToCheck = generateConditional(schema);
 
-  return (entity, api, currentFrame) => {
-    if (conditionalToCheck(entity, api, currentFrame)) {
-      command(entity, api);
-    };
+  return functionWithPackedArgs({conditionalToCheck, command}, _conditional);
+}
+
+function _ifElse (entity, api, {currentFrame, conditionalToCheck, command, alternateCommand}) {
+  if (conditionalToCheck(entity, api, currentFrame)) {
+    command(entity, api);
+  } else {
+    alternateCommand(entity, api);
   };
 }
 
 function ifElse (schema, command, alternateCommand) {
   const conditionalToCheck = generateConditional(schema);
 
-  return (entity, api, currentFrame) => {
-    if (conditionalToCheck(entity, api, currentFrame)) {
-      command(entity, api);
-    } else {
-      alternateCommand(entity, api);
-    };
-  };
+  return functionWithPackedArgs({conditionalToCheck, command, alternateCommand}, _ifElse);
 }
 
 function newNode (schema) {
