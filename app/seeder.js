@@ -5,6 +5,17 @@ var getRandomInt = require('../lib/get-random-int');
 const COMMAND = 'command';
 const QUERY = 'query';
 
+function functionWithPackedArgs (args, f) {
+  const wrapper = (entity, api, currentFrame) => {
+    f(entity, api, Object.assign(args, {currentFrame}));
+  };
+
+  wrapper.f = f;
+  wrapper.args = args;
+
+  return wrapper;
+}
+
 function gt (a, b) {
   return a > b;
 }
@@ -17,34 +28,43 @@ function randomAttribute (object) {
   return _.sample(Object.keys(object));
 }
 
-function compare (operators, a, b) {
-  var operator = _.sample(operators);
-
-  return (entity, api) => operator(a(entity, api), b(entity, api));
+// lol never mind the fact that a and b are passed in as args to themselves. this is crazy
+function compare () {
+  return (entity, api, args) => args.operator(args.a(entity, api, args), args.b(entity, api, args));
 }
 
 function positionConditional (schema) {
   const randomX = getRandomInt(0, 600);
   const randomY = getRandomInt(0, 400);
-  const positionToCheck = _.sample([randomX, randomY]);
-  const attributeToCompare = randomAttribute(schema.getPosition.returns);
 
-  return compare(
-    [gt, lt],
-    (entity, api) => api.getPosition(entity)[attributeToCompare],
-    (entity, api) => positionToCheck
-  );
+  const operator = _.sample([gt, lt]);
+
+  const args = {
+    operator,
+    a: (entity, api, {attributeToCompare}) => api.getPosition(entity)[attributeToCompare],
+    b: (entity, api, {positionToCheck}) => positionToCheck,
+    positionToCheck: _.sample([randomX, randomY]),
+    attributeToCompare: randomAttribute(schema.getPosition.returns),
+  }
+
+  return functionWithPackedArgs(args, compare());
 }
 
 function collisionConditional (schema) {
   return (entity, api, currentFrame) => api.checkCollision(entity, currentFrame);
 }
 
-function inputConditional (schema) {
-  const buttonToCheck = _.sample(schema.checkButtonDown.takes);
-  const buttonQuery = _.sample(['checkButtonDown']);
-
+function _inputConditional () {
   return (entity, api, currentFrame) => api[buttonQuery](entity, buttonToCheck, currentFrame);
+}
+
+function inputConditional (schema) {
+  const args = {
+   buttonToCheck: _.sample(schema.checkButtonDown.takes),
+   buttonQuery: _.sample(['checkButtonDown'])
+  };
+
+  return functionWithPackedArgs(args, _inputConditional);
 }
 
 function generateConditional (schema) {
@@ -53,17 +73,6 @@ function generateConditional (schema) {
     collisionConditional,
     inputConditional
   ])(schema);
-}
-
-function functionWithPackedArgs (args, f) {
-  const wrapper = (entity, api, currentFrame) => {
-    f(entity, api, Object.assign(args, {currentFrame}));
-  };
-
-  wrapper.f = f;
-  wrapper.args = args;
-
-  return wrapper;
 }
 
 
@@ -99,7 +108,7 @@ function getRandomCommand (schema) {
   };
 }
 
-function _unconditional (entity, api) {
+function _unconditional (entity, api, {command}) {
   command(entity, api);
 }
 
