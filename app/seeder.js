@@ -5,6 +5,17 @@ var getRandomInt = require('../lib/get-random-int');
 const COMMAND = 'command';
 const QUERY = 'query';
 
+function functionWithPackedArgs (args, f) {
+  const wrapper = (entity, api, currentFrame) => {
+    f(entity, api, Object.assign(args, {currentFrame}));
+  };
+
+  wrapper.f = f;
+  wrapper.args = args;
+
+  return wrapper;
+}
+
 function gt (a, b) {
   return a > b;
 }
@@ -17,34 +28,43 @@ function randomAttribute (object) {
   return _.sample(Object.keys(object));
 }
 
-function compare (operators, a, b) {
-  var operator = _.sample(operators);
-
-  return (entity, api) => operator(a(entity, api), b(entity, api));
+// lol never mind the fact that a and b are passed in as args to themselves. this is crazy
+function compare () {
+  return (entity, api, args) => args.operator(args.a(entity, api, args), args.b(entity, api, args));
 }
 
 function positionConditional (schema) {
   const randomX = getRandomInt(0, 600);
   const randomY = getRandomInt(0, 400);
-  const positionToCheck = _.sample([randomX, randomY]);
-  const attributeToCompare = randomAttribute(schema.getPosition.returns);
 
-  return compare(
-    [gt, lt],
-    (entity, api) => api.getPosition(entity)[attributeToCompare],
-    (entity, api) => positionToCheck
-  );
+  const operator = _.sample([gt, lt]);
+
+  const args = {
+    operator,
+    a: (entity, api, {attributeToCompare}) => api.getPosition(entity)[attributeToCompare],
+    b: (entity, api, {positionToCheck}) => positionToCheck,
+    positionToCheck: _.sample([randomX, randomY]),
+    attributeToCompare: randomAttribute(schema.getPosition.returns),
+  }
+
+  return functionWithPackedArgs(args, compare());
 }
 
 function collisionConditional (schema) {
   return (entity, api, currentFrame) => api.checkCollision(entity, currentFrame);
 }
 
-function inputConditional (schema) {
-  const buttonToCheck = _.sample(schema.checkButtonDown.takes);
-  const buttonQuery = _.sample(['checkButtonDown']);
-
+function _inputConditional () {
   return (entity, api, currentFrame) => api[buttonQuery](entity, buttonToCheck, currentFrame);
+}
+
+function inputConditional (schema) {
+  const args = {
+   buttonToCheck: _.sample(schema.checkButtonDown.takes),
+   buttonQuery: _.sample(['checkButtonDown'])
+  };
+
+  return functionWithPackedArgs(args, _inputConditional);
 }
 
 function generateConditional (schema) {
@@ -61,14 +81,14 @@ function getRandomCommand (schema) {
   var command = _.sample(['setVelocity', 'stop', 'applyForce']);
 
   if (command === 'setVelocity') {
-    var velocity = {
+    const velocity = {
       x: getRandomInt(-10, 10),
       y: getRandomInt(-10, 10)
     };
 
-    return (entity, api) => {
+    return functionWithPackedArgs({velocity}, (entity, api, {velocity}) => {
       api.setVelocity(entity, velocity);
-    };
+    });
   }
 
   if (command === 'stop') {
@@ -82,34 +102,44 @@ function getRandomCommand (schema) {
       y: getRandomFloat(-forceRange, forceRange)
     };
 
-    return (entity, api) => api.applyForce(entity, force);
+    return functionWithPackedArgs({force}, (entity, api, {force}) =>
+      api.applyForce(entity, force)
+    );
   };
 }
 
+function _unconditional (entity, api, {command}) {
+  command(entity, api);
+}
+
 function unconditional (schema, command) {
-  return (entity, api) => command(entity, api);
+  return functionWithPackedArgs({command}, _unconditional);
+};
+
+function _conditional (entity, api, {currentFrame, conditionalToCheck, command}) {
+  if (conditionalToCheck(entity, api, currentFrame)) {
+    command(entity, api);
+  };
 };
 
 function conditional (schema, command) {
   const conditionalToCheck = generateConditional(schema);
 
-  return (entity, api, currentFrame) => {
-    if (conditionalToCheck(entity, api, currentFrame)) {
-      command(entity, api);
-    };
+  return functionWithPackedArgs({conditionalToCheck, command}, _conditional);
+}
+
+function _ifElse (entity, api, {currentFrame, conditionalToCheck, command, alternateCommand}) {
+  if (conditionalToCheck(entity, api, currentFrame)) {
+    command(entity, api);
+  } else {
+    alternateCommand(entity, api);
   };
 }
 
 function ifElse (schema, command, alternateCommand) {
   const conditionalToCheck = generateConditional(schema);
 
-  return (entity, api, currentFrame) => {
-    if (conditionalToCheck(entity, api, currentFrame)) {
-      command(entity, api);
-    } else {
-      alternateCommand(entity, api);
-    };
-  };
+  return functionWithPackedArgs({conditionalToCheck, command, alternateCommand}, _ifElse);
 }
 
 function newNode (schema) {
