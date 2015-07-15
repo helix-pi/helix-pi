@@ -99,18 +99,8 @@ describe('Helix', () => {
       );
     });
 
-    it('is teh smats at making programs', () => {
-      assert(
-        results['swordsunit'][0].fitness > 750,
-        `Fittest program: ${results['swordsunit'][0].fitness}. Goal: 750`
-      );
-    });
-
     it('handles input', () => {
       let inputResults = results;
-
-      console.log(inputResults['swordsunit'][0].fitness);
-      console.log(inputResults['swordsunit'][0].map(gene => String(gene)).join("\n"));
 
       assert(
         inputResults['swordsunit'][0].fitness > 900,
