@@ -60,8 +60,8 @@ function _inputConditional () {
 
 function inputConditional (schema) {
   const args = {
-   buttonToCheck: _.sample(schema.checkButtonDown.takes),
-   buttonQuery: _.sample(['checkButtonDown'])
+    buttonToCheck: _.sample(schema.checkButtonDown.takes),
+    buttonQuery: _.sample(['checkButtonDown'])
   };
 
   return functionWithPackedArgs(args, _inputConditional);
