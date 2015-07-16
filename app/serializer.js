@@ -76,6 +76,26 @@ function deserializeArgument (argument, value) {
   return {[argument]: deserializeGene(value)};
 }
 
+serialize.results = (results) => {
+  return JSON.stringify(Object.keys(results).map(participant => {
+    return serializeResult(participant, results[participant]);
+  }).reduce((serializedResults, result) => Object.assign(serializedResults, result), {}));
+}
+
+function serializeResult (participant, individuals) {
+  return {[participant]: individuals.map(serialize)};
+}
+
+deserialize.results = (str) => {
+  const results = JSON.parse(str);
+
+  return Object.keys(results).map(participant => {
+    const individuals = results[participant];
+
+    return {[participant]: individuals.map(deserialize)};
+  }).reduce((deserializedResults, result) => Object.assign(deserializedResults, result), {});
+}
+
 module.exports = {
   serialize,
   deserialize
