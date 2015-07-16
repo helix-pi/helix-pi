@@ -3,6 +3,7 @@ var Seeder = require('./app/seeder');
 var Entity = require('./app/entity');
 var simulateWorld = require('./app/simulator');
 var createApi = require('./app/api');
+const {serialize, deserialize} = require('./app/serializer');
 
 var _ = require('lodash');
 
@@ -15,6 +16,15 @@ var eachSlice = function (array, sizeOfSlice) {
 var mean = function (array) {
   return _.sum(array) / array.length;
 };
+
+function fitness (expectedPosition, entity) {
+  var distance = {
+    x: Math.abs(expectedPosition.x - entity.x),
+    y: Math.abs(expectedPosition.y - entity.y)
+  };
+
+  return 1000 - (distance.x + distance.y);
+}
 
 function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
   var scenarios = fitnessScenarios.scenarios;
@@ -73,7 +83,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     fitnesses[participant][individual][scenario.id] = [];
 
     var entities = scenario.participants.map(participantForEntity => {
-      var initial = scenario.startPosition(participantForEntity);
+      var initial = scenario.initialPositions[participantForEntity];
       var expectedPositions = scenario.expectedPositions[participantForEntity] || [];
 
       if (participantForEntity === participant) {
@@ -91,7 +101,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
       simulateWorld(entities, frameCount, scenario.input, currentFrame);
 
       currentFrame = expectedPosition.frame;
-      var evaluatedFitness = fitnessScenarios.fitness(expectedPosition, activeEntity);
+      var evaluatedFitness = fitness(expectedPosition, activeEntity);
 
       fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
     });
@@ -156,5 +166,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 }
 
 run.createApi = createApi; // TODO - something better than this surely
+run.serialize = serialize;
+run.deserialize = deserialize;
 
 module.exports = run;
