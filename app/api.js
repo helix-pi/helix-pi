@@ -27,7 +27,7 @@ function createApi (implementation) {
     takes: {x: 0, y: 0},
     returns: null
   }, function (entity, velocity) {
-    entity.velocity = velocity;
+    entity.velocity = Object.assign({}, velocity);
   });
 
   declareApiCall('applyForce', {
@@ -67,7 +67,7 @@ function createApi (implementation) {
   declareApiCall('checkCollision', {
     type: QUERY,
     takes: null,
-    returns: []
+    returns: [true, false]
   }, implementation.checkCollision);
 
   return api;

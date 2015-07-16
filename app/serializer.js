@@ -14,7 +14,7 @@ function serializeArgs (args) {
 
   return Object.keys(args)
     .map(key => serializeArgument(key, args[key]))
-    .reduce((serializedArguments, argument) => Object.assign(serializedArguments, argument));
+    .reduce((serializedArguments, argument) => Object.assign(serializedArguments, argument), {});
 }
 
 function serializeArgument (argument, value) {
@@ -61,7 +61,7 @@ function deserializeArguments (args) {
 
   return Object.keys(args)
     .map(argument => deserializeArgument(argument, args[argument]))
-    .reduce((deserializedArguments, argument) => Object.assign(deserializedArguments, argument));
+    .reduce((deserializedArguments, argument) => Object.assign(deserializedArguments, argument), {});
 }
 
 function deserializeArgument (argument, value) {

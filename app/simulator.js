@@ -2,9 +2,9 @@ var _ = require('lodash');
 var createApi = require('./api');
 var memoize = require('memoizee');
 
-function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
+function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) {
   var checkButtonDown = function (entity, button, currentFrame) {
-    var result = input.filter((buttonPress) => {
+    var result = input.filter(buttonPress => {
       return buttonPress.key === button &&
              buttonPress.startFrame < currentFrame &&
              buttonPress.endFrame > currentFrame;
@@ -43,7 +43,7 @@ function simulateWorld (entities, numberOfFrames, input, currentFrame = 0) {
   }
 
   var api = createApi({
-    checkCollision: memoize(checkCollision),
+    checkCollision: checkCollision,
     checkButtonDown
   });
 

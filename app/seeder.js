@@ -7,7 +7,7 @@ const QUERY = 'query';
 
 function functionWithPackedArgs (args, f) {
   const wrapper = (entity, api, currentFrame) => {
-    f(entity, api, Object.assign(args, {currentFrame}));
+    return f(entity, api, Object.assign(args, {currentFrame}));
   };
 
   wrapper.f = f;
@@ -30,7 +30,11 @@ function randomAttribute (object) {
 
 // lol never mind the fact that a and b are passed in as args to themselves. this is crazy
 function compare () {
-  return (entity, api, args) => args.operator(args.a(entity, api, args), args.b(entity, api, args));
+  return (entity, api, args) => {
+    const a = args.a(entity, api, args);
+    const b = args.b(entity, api, args);
+    return args.operator(a, b);
+  };
 }
 
 function positionConditional (schema) {
@@ -51,17 +55,20 @@ function positionConditional (schema) {
 }
 
 function collisionConditional (schema) {
-  return (entity, api, currentFrame) => api.checkCollision(entity, currentFrame);
+  return (entity, api, currentFrame) => {
+    return api.checkCollision(entity, currentFrame).length > 1
+  };
 }
 
 function _inputConditional () {
-  return (entity, api, currentFrame) => api[buttonQuery](entity, buttonToCheck, currentFrame);
+  return (entity, api, currentFrame, {buttonToCheck}) => {
+    return api.checkButtonDown(entity, buttonToCheck, currentFrame);
+  }
 }
 
 function inputConditional (schema) {
   const args = {
     buttonToCheck: _.sample(schema.checkButtonDown.takes),
-    buttonQuery: _.sample(['checkButtonDown'])
   };
 
   return functionWithPackedArgs(args, _inputConditional);
