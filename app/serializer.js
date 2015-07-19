@@ -14,7 +14,7 @@ function serializeArgs (args) {
 
   return Object.keys(args)
     .map(key => serializeArgument(key, args[key]))
-    .reduce(Object.assign, {});
+    .reduce((serializedArguments, argument) => Object.assign(serializedArguments, argument), {});
 }
 
 function serializeArgument (argument, value) {
@@ -65,7 +65,7 @@ function deserializeArguments (args) {
 
   return Object.keys(args)
     .map(argument => deserializeArgument(argument, args[argument]))
-    .reduce(Object.assign, {});
+    .reduce((deserializedArguments, argument) => Object.assign(deserializedArguments, argument), {});
 }
 
 function deserializeArgument (argument, value) {
@@ -79,8 +79,8 @@ function deserializeArgument (argument, value) {
 serialize.results = (results) => {
   return JSON.stringify(Object.keys(results).map(participant => {
     return serializeResult(participant, results[participant]);
-  }).reduce(Object.assign, {}));
-};
+  }).reduce((serializedResults, result) => Object.assign(serializedResults, result), {}));
+}
 
 function serializeResult (participant, individuals) {
   return {[participant]: individuals.map(serialize)};
@@ -93,8 +93,8 @@ deserialize.results = (str) => {
     const individuals = results[participant];
 
     return {[participant]: individuals.map(deserialize)};
-  }).reduce(Object.assign, {});
-};
+  }).reduce((deserializedResults, result) => Object.assign(deserializedResults, result), {});
+}
 
 module.exports = {
   serialize,

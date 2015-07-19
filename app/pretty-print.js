@@ -17,7 +17,7 @@ function prettyArguments (args) {
 
   return Object.keys(args)
     .map(argument => prettyArgument(argument, args[argument]))
-    .reduce(Object.assign, {});
+    .reduce((prettyArgs, argument) => Object.assign(prettyArgs, argument), {});
 }
 
 function prettyArgument (argumentName, value) {
