@@ -26,28 +26,28 @@ function boilDownIndividualScore (individual, participant, fitnesses) {
   );
 }
 
-function scoreScenario (scenario, fitnesses, individuals) {
-  scenario.participants.forEach(participant => {
-    scoreParticipantOnScenario(scenario, participant, fitnesses, individuals[participant]);
-  });
+function scoreScenario (scenario, individuals) {
+  return scenario.participants.map(participant => {
+    return {
+      [participant]: scoreParticipantOnScenario(scenario, participant, individuals[participant])
+    };
+  }).reduce((fitnesses, participantFitnesses) =>
+    Object.assign(fitnesses, participantFitnesses), {}
+  );
 }
 
-function scoreParticipantOnScenario (scenario, participant, fitnesses, individuals) {
-  individuals.forEach(individual => {
-    scoreIndividualOnScenario(scenario, participant, individual, fitnesses);
-  });
+function scoreParticipantOnScenario (scenario, participant, individuals) {
+  return individuals.map(individual => {
+    return {[individual]: {1: scoreIndividualOnScenario(scenario, participant, individual)}};
+  }).reduce((scenarioScores, score) =>
+    Object.assign(scenarioScores, score), {}
+  );
 }
 
-function scoreIndividualOnScenario (scenario, participant, individual, fitnesses) {
+function scoreIndividualOnScenario (scenario, participant, individual) {
   // This is where we call up a variant on the original simulation code
   // Note that exactly one participant is allowed to vary at each point
   var currentFrame = 0;
-
-  if (fitnesses[participant][individual] === undefined) {
-    fitnesses[participant][individual] = {};
-  };
-
-  fitnesses[participant][individual][scenario.id] = [];
 
   var entities = scenario.participants.map(participantForEntity => {
     var initial = scenario.initialPositions[participantForEntity];
@@ -62,15 +62,13 @@ function scoreIndividualOnScenario (scenario, participant, individual, fitnesses
 
   var activeEntity = _.find(entities, 'active');
 
-  scenario.expectedPositions[participant].forEach(expectedPosition => {
+  return scenario.expectedPositions[participant].map(expectedPosition => {
     var frameCount = expectedPosition.frame - currentFrame;
 
     simulateWorld(entities, frameCount, scenario.input, currentFrame);
 
     currentFrame = expectedPosition.frame;
-    var evaluatedFitness = fitness(expectedPosition, activeEntity);
-
-    fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
+    return fitness(expectedPosition, activeEntity);
   });
 }
 

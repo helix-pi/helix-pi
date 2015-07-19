@@ -23,10 +23,6 @@ describe('scoreScenario', () => {
       }
     };
 
-    const fitnesses = {
-      Nick: {}
-    };
-
     const individual = [
       (entity, api) => api.setVelocity(entity, {x: 10, y: 0})
     ];
@@ -35,7 +31,7 @@ describe('scoreScenario', () => {
       Nick: [individual]
     };
 
-    scoreScenario(scenario, fitnesses, individuals);
+    const fitnesses = scoreScenario(scenario, individuals);
 
     assert.equal(fitnesses.Nick[individual][scenario.id].length, 1);
     assert.equal(typeof fitnesses.Nick[individual][scenario.id].length, 'number');
@@ -61,10 +57,6 @@ describe('scoreScenario', () => {
       }
     };
 
-    const fitnesses = {
-      Nick: {}
-    };
-
     function makeVelocityGene (velocity) {
       return (entity, api) => api.setVelocity(entity, velocity);
     }
@@ -81,7 +73,7 @@ describe('scoreScenario', () => {
       Nick: [individual, individual2]
     };
 
-    scoreScenario(scenario, fitnesses, individuals);
+    const fitnesses = scoreScenario(scenario, individuals);
 
     assert(
       fitnesses.Nick[individual][scenario.id][0] !==
