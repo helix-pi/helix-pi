@@ -26,15 +26,17 @@ describe('simulateWorld', () => {
       })
     ];
 
-    var entity = new Entity(individual, {x: 0, y: 0}, [], true);
+    const entity = new Entity(individual, {x: 0, y: 0}, [], true);
 
     simulateWorld([entity], 10, []);
 
     assert.equal(entity.x, 0);
 
+    const entity2 = new Entity(individual, {x: 0, y: 0}, [], true);
+
     simulateWorld([entity], 10, [{key: 'right', startFrame: 0, endFrame: 10}]);
 
-    assert.equal(entity.x, 0);
+    assert.equal(entity.x, 9);
   });
 
   it('simulates collision', () => {
@@ -42,7 +44,7 @@ describe('simulateWorld', () => {
 
     var individual = [
       (function (entity, api, currentFrame) {
-        api.setVelocity({x: 10, y: 0});
+        api.setVelocity(entity, {x: 10, y: 0});
         if (api.checkCollision(entity, currentFrame)) {
           hasCollided = true;
         }
