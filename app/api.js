@@ -1,22 +1,22 @@
+const {either, checkReturnType} = require('./type-checking');
+
 var api = {};
 
 const UPDATE = 'update';
 const COMMAND = 'command';
 const QUERY = 'query';
 
-function declareApiCall(name, options, f) {
-  f.type = options.type;
-  f.takes = options.takes;
-  f.returns = options.returns;
+function declareApiCall (name, options, f) {
+  const wrappedFunction = Object.assign(checkReturnType(name, options, f), options);
 
-  api[name] = f;
+  api[name] = wrappedFunction;
 }
 
 function createApi (implementation) {
   declareApiCall('update', {
     type: UPDATE,
     takes: null,
-    returns: null
+    returns: undefined
   }, function (entity) {
     entity.x += entity.velocity.x;
     entity.y += entity.velocity.y;
@@ -25,7 +25,7 @@ function createApi (implementation) {
   declareApiCall('setVelocity', {
     type: COMMAND,
     takes: {x: 0, y: 0},
-    returns: null
+    returns: undefined
   }, function (entity, velocity) {
     entity.velocity = Object.assign({}, velocity);
   });
@@ -33,7 +33,7 @@ function createApi (implementation) {
   declareApiCall('applyForce', {
     type: COMMAND,
     takes: {x: 0, y: 0},
-    returns: null
+    returns: undefined
   }, function (entity, velocity) {
     entity.velocity.x += velocity.x;
     entity.velocity.y += velocity.y;
@@ -42,7 +42,7 @@ function createApi (implementation) {
   declareApiCall('stop', {
     type: COMMAND,
     takes: null,
-    returns: null
+    returns: undefined
   }, function (entity) {
     entity.velocity = {x: 0, y: 0};
   });
@@ -61,13 +61,13 @@ function createApi (implementation) {
   declareApiCall('checkButtonDown', {
     type: QUERY,
     takes: ['right', 'left', 'up', 'down'],
-    returns: [true, false]
+    returns: either(true, false)
   }, implementation.checkButtonDown);
 
   declareApiCall('checkCollision', {
     type: QUERY,
     takes: null,
-    returns: [true, false]
+    returns: either(true, false)
   }, implementation.checkCollision);
 
   return api;
