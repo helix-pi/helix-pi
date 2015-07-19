@@ -19,29 +19,42 @@ function weightedAverage (scoresPerScenario) {
   return Math.sqrt(_.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2))) / scoresPerScenario.length);
 }
 
+function participantInScenario (participant) {
+  return (scenario) => {
+    return Object.keys(scenario).findIndex(participantKey =>
+      participantKey === participant
+    ) !== -1;
+  };
+}
+
 function boilDownIndividualScore (individual, participant, fitnesses) {
   return weightedAverage(
-    _.values(fitnesses[participant][individual])
-      .map(scoresForScenario => weightedAverage(scoresForScenario))
+    Object.values(fitnesses)
+      .filter(participantInScenario(participant))
+      .map(fitnessesForScenario => fitnessesForScenario[participant][individual])
   );
 }
+
+function scoreScenarios (scenarios, individuals) {
+  return scenarios.map(scenario => {
+    return { [scenario.id]: scoreScenario(scenario, individuals) };
+  }).reduce((scenarioScores, score) =>
+    Object.assign(scenarioScores, score), {}
+  );
+};
 
 function scoreScenario (scenario, individuals) {
   return scenario.participants.map(participant => {
     return {
       [participant]: scoreParticipantOnScenario(scenario, participant, individuals[participant])
     };
-  }).reduce((fitnesses, participantFitnesses) =>
-    Object.assign(fitnesses, participantFitnesses), {}
-  );
+  }).reduce((fitnesses, participantFitnesses) => Object.assign(fitnesses, participantFitnesses), {});
 }
 
 function scoreParticipantOnScenario (scenario, participant, individuals) {
   return individuals.map(individual => {
-    return {[individual]: {1: scoreIndividualOnScenario(scenario, participant, individual)}};
-  }).reduce((scenarioScores, score) =>
-    Object.assign(scenarioScores, score), {}
-  );
+    return {[individual]: scoreIndividualOnScenario(scenario, participant, individual)};
+  }).reduce((scenarioScores, score) => Object.assign(scenarioScores, score), {});
 }
 
 function scoreIndividualOnScenario (scenario, participant, individual) {
@@ -72,4 +85,4 @@ function scoreIndividualOnScenario (scenario, participant, individual) {
   });
 }
 
-module.exports = {scoreScenario, boilDownIndividualScore};
+module.exports = {scoreScenarios, boilDownIndividualScore};

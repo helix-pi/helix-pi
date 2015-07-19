@@ -1,27 +1,31 @@
-const {scoreScenario, boilDownIndividualScore} = require('../app/fitness-scoring.js');
+const {scoreScenarios, boilDownIndividualScore} = require('../app/fitness-scoring.js');
 
 const assert = require('assert');
 
+const scenarioId = 1;
+
 describe('scoreScenario', () => {
   it('assigns fitness scores for individuals', () => {
-    const scenario = {
-      id: 1,
-      participants: ['Nick'],
+    const scenarios = [
+      {
+        id: scenarioId,
+        participants: ['Nick'],
 
-      initialPositions: {
-        Nick: {x: 0, y: 0}
-      },
+        initialPositions: {
+          Nick: {x: 0, y: 0}
+        },
 
-      expectedPositions: {
-        Nick: [
-          {
-            frame: 10,
-            x: 100,
-            y: 0
-          }
-        ]
+        expectedPositions: {
+          Nick: [
+            {
+              frame: 10,
+              x: 100,
+              y: 0
+            }
+          ]
+        }
       }
-    };
+    ];
 
     const individual = [
       (entity, api) => api.setVelocity(entity, {x: 10, y: 0})
@@ -31,31 +35,33 @@ describe('scoreScenario', () => {
       Nick: [individual]
     };
 
-    const fitnesses = scoreScenario(scenario, individuals);
+    const fitnesses = scoreScenarios(scenarios, individuals);
 
-    assert.equal(fitnesses.Nick[individual][scenario.id].length, 1);
-    assert.equal(typeof fitnesses.Nick[individual][scenario.id].length, 'number');
+    assert.equal(fitnesses[scenarioId].Nick[individual].length, 1);
+    assert.equal(typeof fitnesses[scenarioId].Nick[individual].length, 'number');
   });
 
   it('has a bug lol', () => {
-    const scenario = {
-      id: 1,
-      participants: ['Nick'],
+    const scenarios = [
+      {
+        id: scenarioId,
+        participants: ['Nick'],
 
-      initialPositions: {
-        Nick: {x: 0, y: 0}
-      },
+        initialPositions: {
+          Nick: {x: 0, y: 0}
+        },
 
-      expectedPositions: {
-        Nick: [
-          {
-            frame: 10,
-            x: 100,
-            y: 0
-          }
-        ]
+        expectedPositions: {
+          Nick: [
+            {
+              frame: 10,
+              x: 100,
+              y: 0
+            }
+          ]
+        }
       }
-    };
+    ];
 
     function makeVelocityGene (velocity) {
       return (entity, api) => api.setVelocity(entity, velocity);
@@ -73,12 +79,15 @@ describe('scoreScenario', () => {
       Nick: [individual, individual2]
     };
 
-    const fitnesses = scoreScenario(scenario, individuals);
+    const fitnesses = scoreScenarios(scenarios, individuals);
+
+    assert.equal(typeof boilDownIndividualScore(individual, 'Nick', fitnesses), 'number');
+    assert(boilDownIndividualScore(individual, 'Nick', fitnesses) != 0, 'Boiled down score was 90');
 
     assert(
-      fitnesses.Nick[individual][scenario.id][0] !==
-      fitnesses.Nick[individual2][scenario.id][0],
-    `Both individuals had a fitness of ${fitnesses.Nick[individual2][scenario.id][0]}`
+      fitnesses[scenarioId].Nick[individual][0] !==
+      fitnesses[scenarioId].Nick[individual2][0],
+      `Both individuals had a fitness of ${fitnesses[scenarioId].Nick[individual2][0]}`
     );
   });
 });

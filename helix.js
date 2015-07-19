@@ -2,7 +2,7 @@ var breedFittestIndividuals = require('./app/breeding');
 var Seeder = require('./app/seeder');
 var createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
-const {scoreScenario, boilDownIndividualScore} = require('./app/fitness-scoring');
+const {scoreScenarios, boilDownIndividualScore} = require('./app/fitness-scoring');
 
 var _ = require('lodash');
 
@@ -22,9 +22,6 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     individuals[participant] = [];
   });
 
-  var fitnesses = _.chain(fitnessScenarios.participants).map(participant => {
-    return [participant, {}];
-  }).object().value();
 
   var fittestIndividualsOfAllTime = _.chain(fitnessScenarios.participants).map(participant => {
     return [participant, []];
@@ -47,8 +44,9 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
-      scoreScenario(scenario, fitnesses, individuals);
     });
+
+    const fitnesses = scoreScenarios(scenarios, individuals);
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
