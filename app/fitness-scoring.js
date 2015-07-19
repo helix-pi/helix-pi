@@ -11,7 +11,7 @@ function fitness (expectedPosition, entity) {
   return 1000 - (distance.x + distance.y);
 }
 
-function limitTo(limit, number) {
+function limitTo (limit, number) {
   return _.max([limit, number]);
 }
 
@@ -26,16 +26,19 @@ function boilDownIndividualScore (individual, participant, fitnesses) {
   );
 }
 
-function scoreScenario(scenario, fitnesses, individuals) {
-  scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses, individuals[participant]) });
+function scoreScenario (scenario, fitnesses, individuals) {
+  scenario.participants.forEach(participant => {
+    scoreParticipantOnScenario(scenario, participant, fitnesses, individuals[participant]);
+  });
 }
 
-function scoreParticipantOnScenario(scenario, participant, fitnesses, individuals) {
-  individuals.forEach(individual => { scoreIndividualOnScenario(scenario, participant, individual, fitnesses) });
+function scoreParticipantOnScenario (scenario, participant, fitnesses, individuals) {
+  individuals.forEach(individual => {
+    scoreIndividualOnScenario(scenario, participant, individual, fitnesses);
+  });
 }
 
-
-function scoreIndividualOnScenario(scenario, participant, individual, fitnesses) {
+function scoreIndividualOnScenario (scenario, participant, individual, fitnesses) {
   // This is where we call up a variant on the original simulation code
   // Note that exactly one participant is allowed to vary at each point
   var currentFrame = 0;
