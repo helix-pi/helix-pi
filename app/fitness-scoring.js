@@ -29,9 +29,9 @@ function participantInScenario (participant) {
 
 function boilDownIndividualScore (individual, participant, fitnesses) {
   return weightedAverage(
-    Object.values(fitnesses)
+    _.values(fitnesses)
       .filter(participantInScenario(participant))
-      .map(fitnessesForScenario => fitnessesForScenario[participant][individual])
+      .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
   );
 }
 
@@ -53,8 +53,11 @@ function scoreScenario (scenario, individuals) {
 
 function scoreParticipantOnScenario (scenario, participant, individuals) {
   return individuals.map(individual => {
-    return {[individual]: scoreIndividualOnScenario(scenario, participant, individual)};
-  }).reduce((scenarioScores, score) => Object.assign(scenarioScores, score), {});
+    return [individual, scoreIndividualOnScenario(scenario, participant, individual)];
+  }).reduce((scenarioScores, individualAndScores) => {
+    const [individual, scores] = individualAndScores;
+    return scenarioScores.set(individual, scores);
+  }, new Map());
 }
 
 function scoreIndividualOnScenario (scenario, participant, individual) {

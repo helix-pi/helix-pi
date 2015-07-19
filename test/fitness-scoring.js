@@ -37,8 +37,8 @@ describe('scoreScenario', () => {
 
     const fitnesses = scoreScenarios(scenarios, individuals);
 
-    assert.equal(fitnesses[scenarioId].Nick[individual].length, 1);
-    assert.equal(typeof fitnesses[scenarioId].Nick[individual].length, 'number');
+    assert.equal(fitnesses[scenarioId].Nick.get(individual).length, 1);
+    assert.equal(typeof fitnesses[scenarioId].Nick.get(individual).length, 'number');
   });
 
   it('has a bug lol', () => {
@@ -85,9 +85,9 @@ describe('scoreScenario', () => {
     assert(boilDownIndividualScore(individual, 'Nick', fitnesses) != 0, 'Boiled down score was 90');
 
     assert(
-      fitnesses[scenarioId].Nick[individual][0] !==
-      fitnesses[scenarioId].Nick[individual2][0],
-      `Both individuals had a fitness of ${fitnesses[scenarioId].Nick[individual2][0]}`
+      fitnesses[scenarioId].Nick.get(individual)[0] !==
+      fitnesses[scenarioId].Nick.get(individual2)[0],
+      `Both individuals had a fitness of ${fitnesses[scenarioId].Nick.get(individual2)[0]}`
     );
   });
 });
