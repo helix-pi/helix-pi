@@ -8,7 +8,7 @@ function fitness (expectedPosition, entity) {
     y: Math.abs(expectedPosition.y - entity.y)
   };
 
-  return 1000 - (distance.x + distance.y);
+  return 1000 - Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
 }
 
 function limitTo (limit, number) {
