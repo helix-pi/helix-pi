@@ -4,7 +4,7 @@ var memoize = require('memoizee');
 
 function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) {
   var checkButtonDown = function (entity, button, currentFrame) {
-    var result = input.filter(buttonPress => {
+    return input.filter(buttonPress => {
       return buttonPress.key === button &&
              buttonPress.startFrame < currentFrame &&
              buttonPress.endFrame > currentFrame;
@@ -39,7 +39,7 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
         entity !== entityToCheck &&
         distance(entity, entityToCheck) < collisionDistance
       );
-    });
+    }).length > 1;
   }
 
   var api = createApi({
