@@ -1,9 +1,8 @@
 var breed = require('./app/breeding');
 var Seeder = require('./app/seeder');
-var Entity = require('./app/entity');
-var simulateWorld = require('./app/simulator');
 var createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
+const {scoreScenario, boilDownIndividualScore} = require('./app/fitness-scoring');
 
 var _ = require('lodash');
 
@@ -12,19 +11,6 @@ var eachSlice = function (array, sizeOfSlice) {
     return Math.floor(index / sizeOfSlice);
   }).toArray().value();
 };
-
-var mean = function (array) {
-  return _.sum(array) / array.length;
-};
-
-function fitness (expectedPosition, entity) {
-  var distance = {
-    x: Math.abs(expectedPosition.x - entity.x),
-    y: Math.abs(expectedPosition.y - entity.y)
-  };
-
-  return 1000 - (distance.x + distance.y);
-}
 
 function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
   var scenarios = fitnessScenarios.scenarios;
@@ -50,17 +36,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     return [participant, []];
   }).object().value();
 
-  function scoreScenario(scenario, fitnesses) {
-    scenario.participants.forEach(participant => { scoreParticipantOnScenario(scenario, participant, fitnesses) });
-  }
-
-  function scoreParticipantOnScenario(scenario, participant, fitnesses) {
-    individuals[participant].forEach(individual => { scoreIndividualOnScenario(scenario, participant, individual, fitnesses) });
-  }
-
-  function fillInIndividuals(individuals) {
-    var blankFunction = () => null;
-
+  function fillInIndividuals (individuals) {
     fitnessScenarios.participants.forEach(participant => {
       var existing = individuals[participant];
       if (existing === undefined) {
@@ -69,57 +45,6 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
       individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
     });
-  }
-
-  function scoreIndividualOnScenario(scenario, participant, individual, fitnesses) {
-    // This is where we call up a variant on the original simulation code
-    // Note that exactly one participant is allowed to vary at each point
-    var currentFrame = 0;
-
-    if (fitnesses[participant][individual] === undefined) {
-      fitnesses[participant][individual] = {};
-    };
-
-    fitnesses[participant][individual][scenario.id] = [];
-
-    var entities = scenario.participants.map(participantForEntity => {
-      var initial = scenario.initialPositions[participantForEntity];
-      var expectedPositions = scenario.expectedPositions[participantForEntity] || [];
-
-      if (participantForEntity === participant) {
-        return new Entity(individual, initial, expectedPositions, true);
-      } else {
-        return new Entity([], initial, expectedPositions, false);
-      }
-    });
-
-    var activeEntity = _.find(entities, 'active');
-
-    scenario.expectedPositions[participant].forEach(expectedPosition => {
-      var frameCount = expectedPosition.frame - currentFrame;
-
-      simulateWorld(entities, frameCount, scenario.input, currentFrame);
-
-      currentFrame = expectedPosition.frame;
-      var evaluatedFitness = fitness(expectedPosition, activeEntity);
-
-      fitnesses[participant][individual][scenario.id].push(evaluatedFitness);
-    });
-  }
-
-  function limitTo(limit, number) {
-    return _.max([limit, number]);
-  }
-
-  function weightedAverage (scoresPerScenario) {
-    return Math.sqrt(_.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2))) / scoresPerScenario.length);
-  }
-
-  function boilDownIndividualScore (individual, participant, fitnesses) {
-    return weightedAverage(
-      _.values(fitnesses[participant][individual])
-        .map(scoresForScenario => weightedAverage(scoresForScenario))
-    );
   }
 
   function breedFittestIndividuals (individuals) {
@@ -150,7 +75,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
-      scoreScenario(scenario, fitnesses)
+      scoreScenario(scenario, fitnesses, individuals);
     });
 
     _.each(individuals, (individualsForParticipant, participant) => {
