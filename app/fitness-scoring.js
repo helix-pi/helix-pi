@@ -3,7 +3,7 @@ const Entity = require('./entity');
 const simulateWorld = require('./simulator');
 
 function fitness (expectedPosition, entity) {
-  var distance = {
+  const distance = {
     x: Math.abs(expectedPosition.x - entity.x),
     y: Math.abs(expectedPosition.y - entity.y)
   };

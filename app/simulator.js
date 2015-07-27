@@ -42,22 +42,27 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
     }).length >= 1;
   }
 
-  var api = createApi({
+  const api = createApi({
     checkCollision: checkCollision,
     checkButtonDown
   });
 
-  var activeEntities = entities.filter(entity => entity.active);
+  const activeEntities = entities.filter(entity => entity.active);
 
-  _.times(numberOfFrames, (frame) => {
-    _.each(activeEntities, (entity) => {
-      _.each(entity.individual, function (gene) {
-        gene(entity, api, currentFrame + frame);
-      });
+  function simulateFrame (frame) {
+    activeEntities.forEach(simulateEntity.bind(this, frame));
+  }
 
-      api.update(entity);
-    });
-  });
+  function simulateEntity (frame, entity) {
+    _.each(entity.individual, simulateGene.bind(this, frame, entity));
+    api.update(entity);
+  };
+
+  function simulateGene (frame, entity, gene) {
+    gene(entity, api, frame);
+  }
+
+  _.times(numberOfFrames, simulateFrame);
 }
 
 module.exports = simulateWorld;
