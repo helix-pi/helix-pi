@@ -1,6 +1,5 @@
 var _ = require('lodash');
 var createApi = require('./api');
-var memoize = require('memoizee');
 
 function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) {
   var checkButtonDown = function (entity, button, currentFrame) {
