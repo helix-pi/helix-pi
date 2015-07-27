@@ -30,10 +30,10 @@ function randomAttribute (object) {
 
 // lol never mind the fact that a and b are passed in as args to themselves. this is crazy
 function compare () {
-  return (entity, api, args) => {
-    const a = args.a(entity, api, args);
-    const b = args.b(entity, api, args);
-    return args.operator(a, b);
+  return (entity, api, {currentFrame, a, b, operator}) => {
+    const aResult = a(entity, api, currentFrame);
+    const bResult = b(entity, api, currentFrame);
+    return operator(aResult, bResult);
   };
 }
 
@@ -43,32 +43,31 @@ function positionConditional (schema) {
 
   const operator = _.sample([gt, lt]);
 
+  const aArgs = {attributeToCompare: randomAttribute(schema.getPosition.returns)};
+  const bArgs = {positionToCheck: _.sample([randomX, randomY])};
+
   const args = {
     operator,
-    a: (entity, api, {attributeToCompare}) => api.getPosition(entity)[attributeToCompare],
-    b: (entity, api, {positionToCheck}) => positionToCheck,
-    positionToCheck: _.sample([randomX, randomY]),
-    attributeToCompare: randomAttribute(schema.getPosition.returns),
-  }
+    a: functionWithPackedArgs(aArgs, (entity, api, {attributeToCompare}) => api.getPosition(entity)[attributeToCompare]),
+    b: functionWithPackedArgs(bArgs, (entity, api, {positionToCheck}) => positionToCheck)
+  };
 
   return functionWithPackedArgs(args, compare());
 }
 
 function collisionConditional (schema) {
-  return (entity, api, currentFrame) => {
-    return api.checkCollision(entity, currentFrame).length > 1
+  return (entity, api, {currentFrame}) => {
+    return api.checkCollision(entity, currentFrame).length > 1;
   };
 }
 
-function _inputConditional () {
-  return (entity, api, currentFrame, {buttonToCheck}) => {
-    return api.checkButtonDown(entity, buttonToCheck, currentFrame);
-  }
+function _inputConditional (entity, api, {currentFrame, buttonToCheck}) {
+  return api.checkButtonDown(entity, buttonToCheck, currentFrame);
 }
 
 function inputConditional (schema) {
   const args = {
-    buttonToCheck: _.sample(schema.checkButtonDown.takes),
+    buttonToCheck: _.sample(schema.checkButtonDown.takes)
   };
 
   return functionWithPackedArgs(args, _inputConditional);
@@ -81,7 +80,6 @@ function generateConditional (schema) {
     inputConditional
   ])(schema);
 }
-
 
 // TODO - genericize
 function getRandomCommand (schema) {

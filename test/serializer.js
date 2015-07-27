@@ -25,5 +25,9 @@ describe("serialization", () => {
     assert.equal(typeof deserialize(serializedIndividual)[0], "function");
 
     simulateWorld([new Entity(deserializedIndividual, {x: 0, y: 0}, [], true)], 10, []);
+    simulateWorld([new Entity(individual, {x: 0, y: 0}, [], true)], 10, []);
+
+    assert.equal(deserializedIndividual.x, individual.x);
+    assert.equal(deserializedIndividual.y, individual.y);
   });
 });
