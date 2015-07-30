@@ -20,18 +20,20 @@ function weightedAverage (scoresPerScenario) {
 }
 
 function participantInScenario (participant) {
-  return (scenario) => {
-    return Object.keys(scenario).findIndex(participantKey =>
+  return ({fitnessesForScenario}) => {
+    return Object.keys(fitnessesForScenario).findIndex(participantKey =>
       participantKey === participant
     ) !== -1;
   };
 }
 
-function boilDownIndividualScore (individual, participant, fitnesses) {
+function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances = {}) {
   return weightedAverage(
-    _.values(fitnesses)
+    _.chain(fitnesses)
+      .map((fitnessesForScenario, scenario) => ({scenario, fitnessesForScenario}))
       .filter(participantInScenario(participant))
-      .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
+      .map(({scenario, fitnessesForScenario}) => fitnessesForScenario[participant].get(individual))
+      .value()
   );
 }
 
