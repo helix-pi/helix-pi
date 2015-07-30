@@ -27,12 +27,13 @@ function participantInScenario (participant) {
   };
 }
 
-function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances = {}) {
+function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances) {
   return weightedAverage(
     _.chain(fitnesses)
       .map((fitnessesForScenario, scenario) => ({scenario, fitnessesForScenario}))
       .filter(participantInScenario(participant))
       .map(({scenario, fitnessesForScenario}) => fitnessesForScenario[participant].get(individual))
+      .map(({scenario, scoreForScenario}) => scoreForScenario * scenarioImportances[scenario])
       .value()
   );
 }
