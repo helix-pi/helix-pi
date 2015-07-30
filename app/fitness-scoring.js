@@ -2,13 +2,15 @@ const _ = require('lodash');
 const Entity = require('./entity');
 const simulateWorld = require('./simulator');
 
+const MAX_FITNESS = 1000;
+
 function fitness (expectedPosition, entity) {
   const distance = {
     x: Math.abs(expectedPosition.x - entity.x),
     y: Math.abs(expectedPosition.y - entity.y)
   };
 
-  return 1000 - Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
+  return MAX_FITNESS - Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
 }
 
 function limitTo (limit, number) {
@@ -33,9 +35,10 @@ function boilDownIndividualScore (individual, participant, fitnesses, scenarioIm
       .map((fitnessesForScenario, scenario) => ({scenario, fitnessesForScenario}))
       .filter(participantInScenario(participant))
       .map(({scenario, fitnessesForScenario}) => fitnessesForScenario[participant].get(individual))
-      .map(({scenario, scoreForScenario}) => scoreForScenario * scenarioImportances[scenario])
+      .map(({scenario, scoreForScenario}) => scoreForScenario * scenarioImportances[participant][scenario])
       .value()
   );
+
 }
 
 function scoreScenarios (scenarios, individuals) {
@@ -91,4 +94,20 @@ function scoreIndividualOnScenario (scenario, participant, individual) {
   });
 }
 
-module.exports = {scoreScenarios, boilDownIndividualScore};
+function createScenarioImportances (fitnessForParticipantPerScenario) {
+  return Object.keys(fitnessForParticipantPerScenario)
+    .map(participant => ({participant, fitnesses: fitnessForParticipantPerScenario[participant]}))
+    .map(({participant, fitnesses}) => ({[participant]: calculateImportance(fitnesses)}))
+    .reduce((importances, importance) => Object.assign(importances, importance), {});
+};
+
+function log (a) { console.log(a); return a };
+
+function calculateImportance (fitnesses) {
+  return Object.keys(fitnesses)
+    .map(scenarioId => ({scenarioId, fitness: fitnesses[scenarioId]}))
+    .map(({scenarioId, fitness}) => ({[scenarioId]: MAX_FITNESS / fitness}))
+    .reduce((importance, scenarioImportance) => Object.assign(importance, scenarioImportance), {});
+};
+
+module.exports = {scoreScenarios, boilDownIndividualScore, createScenarioImportances};

@@ -39,6 +39,8 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     });
   }
 
+  var scenarioImportances = {swordsunit: [1, 1, 1]};
+
   _.times(generations, generation => {
     fillInIndividuals(individuals);
 
@@ -50,7 +52,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
-        individual.fitness = boilDownIndividualScore(individual, participant, fitnesses);
+        individual.fitness = boilDownIndividualScore(individual, participant, fitnesses, scenarioImportances);
       });
     });
 
