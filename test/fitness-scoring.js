@@ -92,3 +92,31 @@ describe('scoreScenario', () => {
   });
 });
 
+
+describe('boilDownIndividualScore', () => {
+  const individual = [];
+
+  const fitnesses = {
+    0: {
+      Nick: new Map([
+        [individual, [500]]
+      ])
+    }
+  }
+
+  const scenarioImportances = {
+    'Nick': {0: 2}
+  }
+
+  const fitness = boilDownIndividualScore(individual, 'Nick', fitnesses, scenarioImportances);
+
+  it('takes an individual and fitnesses and returns a fitness number', () => {
+    assert.equal(typeof fitness.score, 'number', 'Expected score.score to be a number');
+    assert.equal(fitness.score, 500);
+  });
+
+  it('returns a weighted fitness number as well', () => {
+    assert.equal(typeof fitness.weightedScore, 'number', 'Expected score.weightedScore to be a number');
+    assert.equal(fitness.weightedScore, 1000);
+  });
+});

@@ -17,8 +17,15 @@ function limitTo (limit, number) {
   return _.max([limit, number]);
 }
 
+function meanOfSquares (numbers) {
+  return Math.sqrt(numbers.map(number => Math.pow(limitTo(0, number), 2))) / numbers.length;
+}
+
 function weightedAverage (scoresPerScenario) {
-  return Math.sqrt(_.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2))) / scoresPerScenario.length);
+  return {
+    score: meanOfSquares(scoresPerScenario.map(score => score.score)),
+    weightedScore: meanOfSquares(scoresPerScenario.map(score => score.weightedScore))
+  };
 }
 
 function participantInScenario (participant) {
@@ -33,17 +40,21 @@ function boilDownIndividualScore (individual, participant, fitnesses, scenarioIm
   return weightedAverage(
     _.chain(fitnesses)
       .map((fitnessesForScenario, scenario) => ({scenario, fitnessesForScenario}))
-      .filter(participantInScenario(participant))
-      .map(({scenario, fitnessesForScenario}) => fitnessesForScenario[participant].get(individual))
-      .map(({scenario, scoreForScenario}) => scoreForScenario * scenarioImportances[participant][scenario])
-      .value()
+      .map(({scenario, fitnessesForScenario}) => ({scenario, scoresForScenario: fitnessesForScenario[participant].get(individual)}))
+      .map(({scenario, scoresForScenario}) => ({scenario, scoreForScenario: meanOfSquares(scoresForScenario)}))
+      .map(({scenario, scoreForScenario}) => {
+        return {
+          score: scoreForScenario,
+          weightedScore: scoreForScenario * scenarioImportances[participant][scenario]
+        }
+      }).value()
   );
 
 }
 
 function scoreScenarios (scenarios, individuals) {
   return scenarios.map(scenario => {
-    return { [scenario.id]: scoreScenario(scenario, individuals) };
+    return { [{id: scenario.id, participants: scenario.participants}]: scoreScenario(scenario, individuals) };
   }).reduce((scenarioScores, score) =>
     Object.assign(scenarioScores, score), {}
   );
@@ -100,8 +111,6 @@ function createScenarioImportances (fitnessForParticipantPerScenario) {
     .map(({participant, fitnesses}) => ({[participant]: calculateImportance(fitnesses)}))
     .reduce((importances, importance) => Object.assign(importances, importance), {});
 };
-
-function log (a) { console.log(a); return a };
 
 function calculateImportance (fitnesses) {
   return Object.keys(fitnesses)
