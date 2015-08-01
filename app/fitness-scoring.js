@@ -18,8 +18,10 @@ function limitTo (limit, number) {
 }
 
 function meanOfSquares (numbers) {
-  return Math.sqrt(numbers.map(number => Math.pow(limitTo(0, number), 2))) / numbers.length;
+  return Math.sqrt(_.sum(numbers.map(number => Math.pow(limitTo(0, number), 2)))) / numbers.length;
 }
+
+function log (a) { console.log(a); return a };
 
 function weightedAverage (scoresPerScenario) {
   return {
@@ -29,8 +31,8 @@ function weightedAverage (scoresPerScenario) {
 }
 
 function participantInScenario (participant) {
-  return ({fitnessesForScenario}) => {
-    return Object.keys(fitnessesForScenario).findIndex(participantKey =>
+  return (fitnesses, scenario) => {
+    return scenario.participants.findIndex(participantKey =>
       participantKey === participant
     ) !== -1;
   };
@@ -41,6 +43,18 @@ Map.prototype.map = function (f) {
 
   this.forEach((value, key) => {
     resultingMap.set(key, f(value, key));
+  });
+
+  return resultingMap;
+};
+
+Map.prototype.filter = function (f) {
+  const resultingMap = new Map();
+
+  this.forEach((value, key) => {
+    if (f(value, key)) {
+      resultingMap.set(key, value);
+    };
   });
 
   return resultingMap;
@@ -68,8 +82,16 @@ Map.prototype.log = function () {
 }
 
 function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances) {
+  if (fitnesses.filter(participantInScenario(participant)).size === 0) {
+    return {
+      score: 0,
+      weightedScore: 0
+    }
+  }
+
   return weightedAverage(
     fitnesses
+    .filter(participantInScenario(participant))
     .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
     .map(meanOfSquares)
     .map((scoreForScenario, scenario) => {

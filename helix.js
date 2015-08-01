@@ -64,6 +64,10 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
         individual.fitness = boilDownIndividualScore(individual, participant, fitnesses, scenarioImportances);
+
+        if (isNaN(individual.fitness.score)) {
+          throw new Exception('Oh noes!');
+        }
       });
     });
 

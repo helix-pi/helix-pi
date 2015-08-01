@@ -88,11 +88,11 @@ describe('Helix', () => {
     var results = run(fitnessScenarios, 20);
 
     it('returns an array of entities with fitnesses', () => {
-      assert(!isNaN(results['swordsunit'][0].fitness));
+      assert(!isNaN(results['swordsunit'][0].fitness.score));
     });
 
     it('actually has different values for the results', () => {
-      var fitnesses = results['swordsunit'].map(result => result.fitness);
+      var fitnesses = results['swordsunit'].map(result => result.fitness.score);
       assert(
         _.uniq(fitnesses).length > 1,
         `All results had the same fitness: ${fitnesses[0]}`
@@ -103,8 +103,8 @@ describe('Helix', () => {
       let inputResults = results;
 
       assert(
-        inputResults['swordsunit'][0].fitness > 900,
-        `Handle controls better: ${inputResults['swordsunit'][0].fitness}/900`
+        inputResults['swordsunit'][0].fitness.score > 900,
+        `Handle controls better: ${inputResults['swordsunit'][0].fitness.score}/900`
       )
     });
   });
