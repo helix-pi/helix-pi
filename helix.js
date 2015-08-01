@@ -39,7 +39,18 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     });
   }
 
-  var scenarioImportances = {swordsunit: [1, 1, 1]};
+  function reduceIntoObject (keyValues) {
+    return keyValues
+      .reduce((object, keyValue) => Object.assign(object, keyValue), {});
+  };
+
+  function arrayToObject(array) {
+    return reduceIntoObject(array.map((value, key) => ({[key]: value})));
+  };
+
+  var scenarioImportances = reduceIntoObject(fitnessScenarios.participants.map(participant => {
+    return {[participant]: arrayToObject(_.range(fitnessScenarios.scenarios.length).map(_ => 1))};
+  }));
 
   _.times(generations, generation => {
     fillInIndividuals(individuals);

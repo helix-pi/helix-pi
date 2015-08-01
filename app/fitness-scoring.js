@@ -23,8 +23,8 @@ function meanOfSquares (numbers) {
 
 function weightedAverage (scoresPerScenario) {
   return {
-    score: meanOfSquares(scoresPerScenario.map(score => score.score)),
-    weightedScore: meanOfSquares(scoresPerScenario.map(score => score.weightedScore))
+    score: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.score)),
+    weightedScore: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.weightedScore))
   };
 }
 
@@ -36,28 +36,58 @@ function participantInScenario (participant) {
   };
 }
 
+Map.prototype.map = function (f) {
+  const resultingMap = new Map();
+
+  this.forEach((value, key) => {
+    resultingMap.set(key, f(value, key));
+  });
+
+  return resultingMap;
+};
+
+Map.prototype.valuesArray = function () {
+  const values = [];
+
+  for(let value of this.values()) {
+    values.push(value);
+  }
+
+  return values;
+};
+
+Map.prototype.log = function () {
+  const entries = {};
+  for(let [key, value] of this.entries()) {
+    entries[key] = value;
+  };
+
+  console.log(entries);
+
+  return this;
+}
+
 function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances) {
   return weightedAverage(
-    _.chain(fitnesses)
-      .map((fitnessesForScenario, scenario) => ({scenario, fitnessesForScenario}))
-      .map(({scenario, fitnessesForScenario}) => ({scenario, scoresForScenario: fitnessesForScenario[participant].get(individual)}))
-      .map(({scenario, scoresForScenario}) => ({scenario, scoreForScenario: meanOfSquares(scoresForScenario)}))
-      .map(({scenario, scoreForScenario}) => {
-        return {
-          score: scoreForScenario,
-          weightedScore: scoreForScenario * scenarioImportances[participant][scenario]
-        }
-      }).value()
+    fitnesses
+    .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
+    .map(meanOfSquares)
+    .map((scoreForScenario, scenario) => {
+      return {
+        score: scoreForScenario,
+        weightedScore: scoreForScenario * scenarioImportances[participant][scenario.id]
+      };
+    })
   );
-
 }
 
 function scoreScenarios (scenarios, individuals) {
   return scenarios.map(scenario => {
-    return { [{id: scenario.id, participants: scenario.participants}]: scoreScenario(scenario, individuals) };
-  }).reduce((scenarioScores, score) =>
-    Object.assign(scenarioScores, score), {}
-  );
+    return [scenario, scoreScenario(scenario, individuals)];
+  }).reduce((allScenarioScores, score) => {
+    const [scenario, scenarioScores] = score;
+    return allScenarioScores.set(scenario, scenarioScores);
+  }, new Map());
 };
 
 function scoreScenario (scenario, individuals) {
