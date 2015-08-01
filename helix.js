@@ -2,14 +2,22 @@ var breedFittestIndividuals = require('./app/breeding');
 var Seeder = require('./app/seeder');
 var createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
-const {scoreScenarios, boilDownIndividualScore} = require('./app/fitness-scoring');
+const {scoreScenarios, boilDownIndividualScore, createScenarioImportances} = require('./app/fitness-scoring');
 
 var _ = require('lodash');
 
+function mean (numbers) {
+  const result = _.sum(numbers) / numbers.length;
+
+  if (result === Infinity) {
+    return 0;
+  }
+
+  return result;
+}
+
 function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
   var scenarios = fitnessScenarios.scenarios;
-  var entities;
-  var fittestIndividuals = [];
 
   function createStub () { return function stub () { throw 'you no execute me'; }; };
   var stubApi = createApi({
@@ -21,7 +29,6 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
   _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
     individuals[participant] = [];
   });
-
 
   var fittestIndividualsOfAllTime = _.chain(fitnessScenarios.participants).map(participant => {
     return [participant, []];
@@ -44,7 +51,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
       .reduce((object, keyValue) => Object.assign(object, keyValue), {});
   };
 
-  function arrayToObject(array) {
+  function arrayToObject (array) {
     return reduceIntoObject(array.map((value, key) => ({[key]: value})));
   };
 
@@ -70,6 +77,22 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
         }
       });
     });
+
+    const highestFitnessesForScenarioForParticipant = reduceIntoObject(fitnessScenarios.participants.map(participant => {
+      return {[participant]: reduceIntoObject(
+        fitnesses.map((scenarioFitnesses, scenario) => {
+          if (scenarioFitnesses[participant] === undefined) {
+            return {[scenario.id]: 0};
+          }
+
+          return {[scenario.id]: _.max(
+            scenarioFitnesses[participant].valuesArray().map(fitnesses => mean(fitnesses))
+          )};
+        }).valuesArray()
+      )};
+    }));
+
+    scenarioImportances = createScenarioImportances(highestFitnessesForScenarioForParticipant);
 
     // TODO _ fittestIndividualsOfAllTime is an OUT variable, make this design better
     individuals = breedFittestIndividuals(individuals, population, fittestIndividualsOfAllTime);

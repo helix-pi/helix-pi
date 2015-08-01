@@ -70,6 +70,16 @@ Map.prototype.valuesArray = function () {
   return values;
 };
 
+Map.prototype.keysArray = function () {
+  const keys = [];
+
+  for(let key of this.keys()) {
+    keys.push(key);
+  }
+
+  return keys;
+};
+
 Map.prototype.log = function () {
   const entries = {};
   for(let [key, value] of this.entries()) {
@@ -164,10 +174,18 @@ function createScenarioImportances (fitnessForParticipantPerScenario) {
     .reduce((importances, importance) => Object.assign(importances, importance), {});
 };
 
+function replaceInfinityWithZero (number) {
+  if (number === Infinity) {
+    return 0;
+  }
+
+  return number;
+}
+
 function calculateImportance (fitnesses) {
   return Object.keys(fitnesses)
     .map(scenarioId => ({scenarioId, fitness: fitnesses[scenarioId]}))
-    .map(({scenarioId, fitness}) => ({[scenarioId]: MAX_FITNESS / fitness}))
+    .map(({scenarioId, fitness}) => ({[scenarioId]: replaceInfinityWithZero(MAX_FITNESS / fitness)}))
     .reduce((importance, scenarioImportance) => Object.assign(importance, scenarioImportance), {});
 };
 
