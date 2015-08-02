@@ -6,6 +6,17 @@ const {scoreScenarios, boilDownIndividualScore, createScenarioImportances} = req
 
 var _ = require('lodash');
 
+function reduceIntoObject (keyValues) {
+  return keyValues.reduce(
+    (object, keyValue) => Object.assign(object, keyValue),
+    {}
+  );
+};
+
+function arrayToObject (array) {
+  return reduceIntoObject(array.map((value, key) => ({[key]: value})));
+};
+
 function mean (numbers) {
   const result = _.sum(numbers) / numbers.length;
 
@@ -16,51 +27,68 @@ function mean (numbers) {
   return result;
 }
 
-function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
-  var scenarios = fitnessScenarios.scenarios;
+function highestFitnessForScenario (fitnessesForScenario) {
+  return _.max(fitnessesForScenario.valuesArray().map(fitnesses => mean(fitnesses)));
+}
 
+function highestFitnessForParticipantPerScenario (participant, fitnesses) {
+  return reduceIntoObject(
+    fitnesses.map((scenarioFitnesses, scenario) => {
+      if (scenarioFitnesses[participant] === undefined) {
+        return {[scenario.id]: 0};
+      }
+
+      return {
+        [scenario.id]: highestFitnessForScenario(scenarioFitnesses[participant])
+      };
+    }).valuesArray()
+  );
+};
+
+function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) {
+  return reduceIntoObject(participants.map(participant => {
+    return {
+      [participant]: highestFitnessForParticipantPerScenario(participant, fitnesses)
+    };
+  }));
+};
+
+function fillInIndividuals (individuals, population, participants) {
   function createStub () { return function stub () { throw 'you no execute me'; }; };
+
   var stubApi = createApi({
     checkCollision: createStub(),
     checkButtonDown: createStub(),
     checkButtonReleased: createStub()
   });
 
-  _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
-    individuals[participant] = [];
+  participants.forEach(participant => {
+    var existing = individuals[participant];
+
+    if (existing === undefined) {
+      individuals[participant] = existing = [];
+    };
+
+    individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
   });
 
-  var fittestIndividualsOfAllTime = _.chain(fitnessScenarios.participants).map(participant => {
+  return individuals;
+}
+
+function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
+  const scenarios = fitnessScenarios.scenarios;
+  const participants = fitnessScenarios.participants;
+
+  let fittestIndividualsOfAllTime = _.chain(participants).map(participant => {
     return [participant, []];
   }).object().value();
 
-  function fillInIndividuals (individuals) {
-    fitnessScenarios.participants.forEach(participant => {
-      var existing = individuals[participant];
-
-      if (existing === undefined) {
-        individuals[participant] = existing = [];
-      };
-
-      individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
-    });
-  }
-
-  function reduceIntoObject (keyValues) {
-    return keyValues
-      .reduce((object, keyValue) => Object.assign(object, keyValue), {});
-  };
-
-  function arrayToObject (array) {
-    return reduceIntoObject(array.map((value, key) => ({[key]: value})));
-  };
-
-  var scenarioImportances = reduceIntoObject(fitnessScenarios.participants.map(participant => {
+  let scenarioImportances = reduceIntoObject(participants.map(participant => {
     return {[participant]: arrayToObject(_.range(fitnessScenarios.scenarios.length).map(_ => 1))};
   }));
 
   _.times(generations, generation => {
-    fillInIndividuals(individuals);
+    fillInIndividuals(individuals, population, participants);
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
@@ -71,28 +99,12 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
         individual.fitness = boilDownIndividualScore(individual, participant, fitnesses, scenarioImportances);
-
-        if (isNaN(individual.fitness.score)) {
-          throw new Exception('Oh noes!');
-        }
       });
     });
 
-    const highestFitnessesForScenarioForParticipant = reduceIntoObject(fitnessScenarios.participants.map(participant => {
-      return {[participant]: reduceIntoObject(
-        fitnesses.map((scenarioFitnesses, scenario) => {
-          if (scenarioFitnesses[participant] === undefined) {
-            return {[scenario.id]: 0};
-          }
-
-          return {[scenario.id]: _.max(
-            scenarioFitnesses[participant].valuesArray().map(fitnesses => mean(fitnesses))
-          )};
-        }).valuesArray()
-      )};
-    }));
-
-    scenarioImportances = createScenarioImportances(highestFitnessesForScenarioForParticipant);
+    scenarioImportances = createScenarioImportances(
+      getHighestFitnessesForScenarioForParticipant(participants, fitnesses)
+    );
 
     // TODO _ fittestIndividualsOfAllTime is an OUT variable, make this design better
     individuals = breedFittestIndividuals(individuals, population, fittestIndividualsOfAllTime);
