@@ -1,10 +1,14 @@
-var breedFittestIndividuals = require('./app/breeding');
-var Seeder = require('./app/seeder');
-var createApi = require('./app/api');
+const breedFittestIndividuals = require('./app/breeding');
+const Seeder = require('./app/seeder');
+const createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
-const {scoreScenarios, boilDownIndividualScore, createScenarioImportances} = require('./app/fitness-scoring');
+const {
+  scoreScenarios,
+  boilDownIndividualScore,
+  createScenarioImportances
+} = require('./app/fitness-scoring');
 
-var _ = require('lodash');
+const _ = require('lodash');
 
 function reduceIntoObject (keyValues) {
   return keyValues.reduce(
@@ -28,7 +32,11 @@ function mean (numbers) {
 }
 
 function highestFitnessForScenario (fitnessesForScenario) {
-  return _.max(fitnessesForScenario.valuesArray().map(fitnesses => mean(fitnesses)));
+  return _.max(
+    fitnessesForScenario
+      .valuesArray()
+      .map(fitnesses => mean(fitnesses))
+  );
 }
 
 function highestFitnessForParticipantPerScenario (participant, fitnesses) {
@@ -48,7 +56,10 @@ function highestFitnessForParticipantPerScenario (participant, fitnesses) {
 function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) {
   return reduceIntoObject(participants.map(participant => {
     return {
-      [participant]: highestFitnessForParticipantPerScenario(participant, fitnesses)
+      [participant]: highestFitnessForParticipantPerScenario(
+        participant,
+        fitnesses
+      )
     };
   }));
 };
@@ -56,20 +67,23 @@ function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) 
 function fillInIndividuals (individuals, population, participants) {
   function createStub () { return function stub () { throw 'you no execute me'; }; };
 
-  var stubApi = createApi({
+  const stubApi = createApi({
     checkCollision: createStub(),
     checkButtonDown: createStub(),
     checkButtonReleased: createStub()
   });
 
   participants.forEach(participant => {
-    var existing = individuals[participant];
+    const existing = individuals[participant];
 
     if (existing === undefined) {
       individuals[participant] = existing = [];
     };
 
-    individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
+    const numberOfIndividualsToBreed = population - existing.length;
+    const newIndividuals = Seeder.make(stubApi, numberOfIndividualsToBreed);
+
+    individuals[participant] = existing.concat(newIndividuals);
   });
 
   return individuals;
@@ -84,7 +98,9 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
   }).object().value();
 
   let scenarioImportances = reduceIntoObject(participants.map(participant => {
-    return {[participant]: arrayToObject(_.range(fitnessScenarios.scenarios.length).map(_ => 1))};
+    return {
+      [participant]: arrayToObject(_.range(scenarios.length).map(_ => 1))
+    };
   }));
 
   _.times(generations, generation => {
@@ -98,7 +114,12 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
-        individual.fitness = boilDownIndividualScore(individual, participant, fitnesses, scenarioImportances);
+        individual.fitness = boilDownIndividualScore(
+          individual,
+          participant,
+          fitnesses,
+          scenarioImportances
+        );
       });
     });
 
@@ -107,7 +128,11 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     );
 
     // TODO _ fittestIndividualsOfAllTime is an OUT variable, make this design better
-    individuals = breedFittestIndividuals(individuals, population, fittestIndividualsOfAllTime);
+    individuals = breedFittestIndividuals(
+      individuals,
+      population,
+      fittestIndividualsOfAllTime // OUT
+    );
   });
 
   return fittestIndividualsOfAllTime;
