@@ -2,27 +2,10 @@
 
 const {scoreScenarios, boilDownIndividualScore} = require('../app/fitness-scoring.js');
 
+const scenario = require('./fixtures/scenario')();
 const assert = require('assert');
 
-const scenarioId = 1;
-const scenario = {
-  id: scenarioId,
-  participants: ['Nick'],
-
-  initialPositions: {
-    Nick: {x: 0, y: 0}
-  },
-
-  expectedPositions: {
-    Nick: [
-      {
-        frame: 10,
-        x: 100,
-        y: 0
-      }
-    ]
-  }
-}
+const scenarioId = scenario.id;
 
 const scenarios = [scenario];
 

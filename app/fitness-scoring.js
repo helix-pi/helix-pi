@@ -166,27 +166,4 @@ function scoreIndividualOnScenario (scenario, participant, individual) {
     return fitness(expectedPosition, activeEntity);
   });
 }
-
-function createScenarioImportances (fitnessForParticipantPerScenario) {
-  return Object.keys(fitnessForParticipantPerScenario)
-    .map(participant => ({participant, fitnesses: fitnessForParticipantPerScenario[participant]}))
-    .map(({participant, fitnesses}) => ({[participant]: calculateImportance(fitnesses)}))
-    .reduce((importances, importance) => Object.assign(importances, importance), {});
-};
-
-function replaceInfinityWithZero (number) {
-  if (number === Infinity) {
-    return 0;
-  }
-
-  return number;
-}
-
-function calculateImportance (fitnesses) {
-  return Object.keys(fitnesses)
-    .map(scenarioId => ({scenarioId, fitness: fitnesses[scenarioId]}))
-    .map(({scenarioId, fitness}) => ({[scenarioId]: replaceInfinityWithZero(MAX_FITNESS / fitness)}))
-    .reduce((importance, scenarioImportance) => Object.assign(importance, scenarioImportance), {});
-};
-
-module.exports = {scoreScenarios, boilDownIndividualScore, createScenarioImportances};
+module.exports = {scoreScenarios, boilDownIndividualScore};

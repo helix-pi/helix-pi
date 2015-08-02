@@ -4,64 +4,17 @@ const createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
 const {
   scoreScenarios,
-  boilDownIndividualScore,
-  createScenarioImportances
+  boilDownIndividualScore
 } = require('./app/fitness-scoring');
+
+const reduceIntoObject = require('./app/reduce-into-object');
+
+const calculateScenarioImportances = require('./app/calculate-scenario-importance');
 
 const _ = require('lodash');
 
-function reduceIntoObject (keyValues) {
-  return keyValues.reduce(
-    (object, keyValue) => Object.assign(object, keyValue),
-    {}
-  );
-};
-
 function arrayToObject (array) {
   return reduceIntoObject(array.map((value, key) => ({[key]: value})));
-};
-
-function mean (numbers) {
-  const result = _.sum(numbers) / numbers.length;
-
-  if (result === Infinity) {
-    return 0;
-  }
-
-  return result;
-}
-
-function highestFitnessForScenario (fitnessesForScenario) {
-  return _.max(
-    fitnessesForScenario
-      .valuesArray()
-      .map(fitnesses => mean(fitnesses))
-  );
-}
-
-function highestFitnessForParticipantPerScenario (participant, fitnesses) {
-  return reduceIntoObject(
-    fitnesses.map((scenarioFitnesses, scenario) => {
-      if (scenarioFitnesses[participant] === undefined) {
-        return {[scenario.id]: 0};
-      }
-
-      return {
-        [scenario.id]: highestFitnessForScenario(scenarioFitnesses[participant])
-      };
-    }).valuesArray()
-  );
-};
-
-function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) {
-  return reduceIntoObject(participants.map(participant => {
-    return {
-      [participant]: highestFitnessForParticipantPerScenario(
-        participant,
-        fitnesses
-      )
-    };
-  }));
 };
 
 function fillInIndividuals (individuals, population, participants) {
@@ -74,7 +27,7 @@ function fillInIndividuals (individuals, population, participants) {
   });
 
   participants.forEach(participant => {
-    const existing = individuals[participant];
+    let existing = individuals[participant];
 
     if (existing === undefined) {
       individuals[participant] = existing = [];
@@ -123,10 +76,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
       });
     });
 
-    scenarioImportances = createScenarioImportances(
-      getHighestFitnessesForScenarioForParticipant(participants, fitnesses)
-    );
-
+    scenarioImportances = calculateScenarioImportances(participants, fitnesses);
     // TODO _ fittestIndividualsOfAllTime is an OUT variable, make this design better
     individuals = breedFittestIndividuals(
       individuals,
