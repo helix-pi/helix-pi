@@ -2,6 +2,8 @@ const _ = require('lodash');
 const Entity = require('./entity');
 const simulateWorld = require('./simulator');
 
+require('../lib/map-extensions'); // To the reader, my apologies
+
 const MAX_FITNESS = 1000;
 
 function fitness (expectedPosition, entity) {
@@ -21,8 +23,6 @@ function meanOfSquares (numbers) {
   return Math.sqrt(_.sum(numbers.map(number => Math.pow(limitTo(0, number), 2)))) / numbers.length;
 }
 
-function log (a) { console.log(a); return a };
-
 function weightedAverage (scoresPerScenario) {
   return {
     score: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.score)),
@@ -38,65 +38,12 @@ function participantInScenario (participant) {
   };
 }
 
-Map.prototype.map = function (f) {
-  const resultingMap = new Map();
-
-  this.forEach((value, key) => {
-    resultingMap.set(key, f(value, key));
-  });
-
-  return resultingMap;
-};
-
-Map.prototype.filter = function (f) {
-  const resultingMap = new Map();
-
-  this.forEach((value, key) => {
-    if (f(value, key)) {
-      resultingMap.set(key, value);
-    };
-  });
-
-  return resultingMap;
-};
-
-Map.prototype.valuesArray = function () {
-  const values = [];
-
-  for(let value of this.values()) {
-    values.push(value);
-  }
-
-  return values;
-};
-
-Map.prototype.keysArray = function () {
-  const keys = [];
-
-  for(let key of this.keys()) {
-    keys.push(key);
-  }
-
-  return keys;
-};
-
-Map.prototype.log = function () {
-  const entries = {};
-  for(let [key, value] of this.entries()) {
-    entries[key] = value;
-  };
-
-  console.log(entries);
-
-  return this;
-}
-
 function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances) {
   if (fitnesses.filter(participantInScenario(participant)).size === 0) {
     return {
       score: 0,
       weightedScore: 0
-    }
+    };
   }
 
   return weightedAverage(
