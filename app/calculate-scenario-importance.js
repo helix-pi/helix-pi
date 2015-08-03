@@ -1,6 +1,9 @@
 const reduceIntoObject = require('./reduce-into-object');
 const _ = require('lodash');
 
+// TODO - DUPLICATION OMG
+const MAX_FITNESS = 1000;
+
 function mean (numbers) {
   const result = _.sum(numbers) / numbers.length;
 
@@ -73,5 +76,5 @@ function calculateScenarioImportances (participants, fitnesses) {
   );
 }
 
-module.exports = getHighestFitnessesForScenarioForParticipant;
+module.exports = calculateScenarioImportances;
 
