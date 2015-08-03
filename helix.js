@@ -1,46 +1,63 @@
-var breedFittestIndividuals = require('./app/breeding');
-var Seeder = require('./app/seeder');
-var createApi = require('./app/api');
+const breedFittestIndividuals = require('./app/breeding');
+const Seeder = require('./app/seeder');
+const createApi = require('./app/api');
 const {serialize, deserialize} = require('./app/serializer');
-const {scoreScenarios, boilDownIndividualScore} = require('./app/fitness-scoring');
+const {
+  scoreScenarios,
+  boilDownIndividualScore
+} = require('./app/fitness-scoring');
 
-var _ = require('lodash');
+const reduceIntoObject = require('./app/reduce-into-object');
 
-function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
-  var scenarios = fitnessScenarios.scenarios;
-  var entities;
-  var fittestIndividuals = [];
+const calculateScenarioImportances = require('./app/calculate-scenario-importance');
 
+const _ = require('lodash');
+
+function arrayToObject (array) {
+  return reduceIntoObject(array.map((value, key) => ({[key]: value})));
+};
+
+function fillInIndividuals (individuals, population, participants) {
   function createStub () { return function stub () { throw 'you no execute me'; }; };
-  var stubApi = createApi({
+
+  const stubApi = createApi({
     checkCollision: createStub(),
     checkButtonDown: createStub(),
     checkButtonReleased: createStub()
   });
 
-  _.difference(Object.keys(individuals), fitnessScenarios.participants).forEach(participant => {
-    individuals[participant] = [];
+  participants.forEach(participant => {
+    let existing = individuals[participant];
+
+    if (existing === undefined) {
+      individuals[participant] = existing = [];
+    };
+
+    const numberOfIndividualsToBreed = population - existing.length;
+    const newIndividuals = Seeder.make(stubApi, numberOfIndividualsToBreed);
+
+    individuals[participant] = existing.concat(newIndividuals);
   });
 
+  return individuals;
+}
 
-  var fittestIndividualsOfAllTime = _.chain(fitnessScenarios.participants).map(participant => {
+function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
+  const scenarios = fitnessScenarios.scenarios;
+  const participants = fitnessScenarios.participants;
+
+  let fittestIndividualsOfAllTime = _.chain(participants).map(participant => {
     return [participant, []];
   }).object().value();
 
-  function fillInIndividuals (individuals) {
-    fitnessScenarios.participants.forEach(participant => {
-      var existing = individuals[participant];
-
-      if (existing === undefined) {
-        individuals[participant] = existing = [];
-      };
-
-      individuals[participant] = existing.concat(Seeder.make(stubApi, population - existing.length));
-    });
-  }
+  let scenarioImportances = reduceIntoObject(participants.map(participant => {
+    return {
+      [participant]: arrayToObject(_.range(scenarios.length).map(_ => 1))
+    };
+  }));
 
   _.times(generations, generation => {
-    fillInIndividuals(individuals);
+    fillInIndividuals(individuals, population, participants);
 
     scenarios.forEach((scenario, index) => {
       scenario.id = index;
@@ -50,12 +67,22 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individualsForParticipant.forEach(individual => {
-        individual.fitness = boilDownIndividualScore(individual, participant, fitnesses);
+        individual.fitness = boilDownIndividualScore(
+          individual,
+          participant,
+          fitnesses,
+          scenarioImportances
+        );
       });
     });
 
+    scenarioImportances = calculateScenarioImportances(participants, fitnesses);
     // TODO _ fittestIndividualsOfAllTime is an OUT variable, make this design better
-    individuals = breedFittestIndividuals(individuals, population, fittestIndividualsOfAllTime);
+    individuals = breedFittestIndividuals(
+      individuals,
+      population,
+      fittestIndividualsOfAllTime // OUT
+    );
   });
 
   return fittestIndividualsOfAllTime;

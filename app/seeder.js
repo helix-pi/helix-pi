@@ -161,16 +161,16 @@ function newNode (schema) {
 function generateIndividual (schema) {
   var entropy = getRandomInt(1, 20);
 
-  return _.chain(entropy).range().map(() => {
+  return _.range(entropy).map(() => {
     return newNode(schema);
-  }).value();
+  });
 }
 
 var Seeder = {
   make (schema, numberOfIndividuals) {
-    return _.chain(numberOfIndividuals).range().map(() => {
+    return _.range(numberOfIndividuals).map(() => {
       return generateIndividual(schema);
-    }).value();
+    })
   }
 };
 
