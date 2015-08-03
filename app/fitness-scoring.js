@@ -48,15 +48,16 @@ function boilDownIndividualScore (individual, participant, fitnesses, scenarioIm
 
   return weightedAverage(
     fitnesses
-    .filter(participantInScenario(participant))
-    .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
-    .map(meanOfSquares)
-    .map((scoreForScenario, scenario) => {
-      return {
-        score: scoreForScenario,
-        weightedScore: scoreForScenario * scenarioImportances[participant][scenario.id]
-      };
-    })
+      .filter(participantInScenario(participant))
+      .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
+      .map(meanOfSquares)
+      .map((scoreForScenario, scenario) => {
+        return {
+          score: scoreForScenario,
+          weightedScore: scoreForScenario * scenarioImportances[participant][scenario.id]
+        };
+      }
+    )
   );
 }
 
