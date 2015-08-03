@@ -2,45 +2,72 @@ const _ = require('lodash');
 const Entity = require('./entity');
 const simulateWorld = require('./simulator');
 
+require('../lib/map-extensions'); // To the reader, my apologies
+
+const MAX_FITNESS = 1000;
+
 function fitness (expectedPosition, entity) {
   const distance = {
     x: Math.abs(expectedPosition.x - entity.x),
     y: Math.abs(expectedPosition.y - entity.y)
   };
 
-  return 1000 - Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
+  return MAX_FITNESS - Math.sqrt(Math.pow(distance.x, 2) + Math.pow(distance.y, 2));
 }
 
 function limitTo (limit, number) {
   return _.max([limit, number]);
 }
 
+function meanOfSquares (numbers) {
+  return Math.sqrt(_.sum(numbers.map(number => Math.pow(limitTo(0, number), 2)))) / numbers.length;
+}
+
 function weightedAverage (scoresPerScenario) {
-  return Math.sqrt(_.sum(scoresPerScenario.map(score => Math.pow(limitTo(0, score), 2))) / scoresPerScenario.length);
+  return {
+    score: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.score)),
+    weightedScore: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.weightedScore))
+  };
 }
 
 function participantInScenario (participant) {
-  return (scenario) => {
-    return Object.keys(scenario).findIndex(participantKey =>
+  return (fitnesses, scenario) => {
+    return scenario.participants.findIndex(participantKey =>
       participantKey === participant
     ) !== -1;
   };
 }
 
-function boilDownIndividualScore (individual, participant, fitnesses) {
+function boilDownIndividualScore (individual, participant, fitnesses, scenarioImportances) {
+  if (fitnesses.filter(participantInScenario(participant)).size === 0) {
+    return {
+      score: 0,
+      weightedScore: 0
+    };
+  }
+
   return weightedAverage(
-    _.values(fitnesses)
+    fitnesses
       .filter(participantInScenario(participant))
       .map(fitnessesForScenario => fitnessesForScenario[participant].get(individual))
+      .map(meanOfSquares)
+      .map((scoreForScenario, scenario) => {
+        return {
+          score: scoreForScenario,
+          weightedScore: scoreForScenario * scenarioImportances[participant][scenario.id]
+        };
+      }
+    )
   );
 }
 
 function scoreScenarios (scenarios, individuals) {
   return scenarios.map(scenario => {
-    return { [scenario.id]: scoreScenario(scenario, individuals) };
-  }).reduce((scenarioScores, score) =>
-    Object.assign(scenarioScores, score), {}
-  );
+    return [scenario, scoreScenario(scenario, individuals)];
+  }).reduce((allScenarioScores, score) => {
+    const [scenario, scenarioScores] = score;
+    return allScenarioScores.set(scenario, scenarioScores);
+  }, new Map());
 };
 
 function scoreScenario (scenario, individuals) {
@@ -87,5 +114,4 @@ function scoreIndividualOnScenario (scenario, participant, individual) {
     return fitness(expectedPosition, activeEntity);
   });
 }
-
 module.exports = {scoreScenarios, boilDownIndividualScore};

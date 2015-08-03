@@ -15,12 +15,12 @@ function breed (mum, dad) {
 
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
   var fittestIndividuals = individuals
-    .sort((a, b) => b.fitness - a.fitness)
+    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore)
     .slice(0, Math.ceil(population / 2));
 
   fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
     .concat(fittestIndividuals)
-    .sort((a, b) => b.fitness - a.fitness)
+    .sort((a, b) => b.fitness.score - a.fitness.score)
     .slice(0, Math.ceil(population / 4));
 
   var breedingPairs = eachSlice(fittestIndividuals, 2);
