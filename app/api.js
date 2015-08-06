@@ -58,6 +58,37 @@ function createApi (implementation) {
     };
   });
 
+  declareApiCall('move', {
+    type: COMMAND,
+    takes: ['right', 'left', 'up', 'down'],
+    returns: undefined
+  }, function (entity, direction, distance) {
+    const velocity = {
+      right: {
+        x: distance,
+        y: 0
+      },
+
+      left: {
+        x: -distance,
+        y: 0
+      },
+
+      down: {
+        x: 0,
+        y: distance
+      },
+
+      up: {
+        x: 0,
+        y: -distance
+      }
+    }
+
+    entity.x += velocity[direction].x;
+    entity.y += velocity[direction].y;
+  });
+
   declareApiCall('checkButtonDown', {
     type: QUERY,
     takes: ['right', 'left', 'up', 'down'],
