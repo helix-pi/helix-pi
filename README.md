@@ -1,4 +1,10 @@
+[![npm version](https://badge.fury.io/js/helix-pi.svg)](http://badge.fury.io/js/helix-pi)
+[![Build Status](https://travis-ci.org/Widdershin/helix-pi.svg?branch=master)](https://travis-ci.org/Widdershin/helix-pi)
+[![Code Climate](https://codeclimate.com/github/Widdershin/helix-pi/badges/gpa.svg)](https://codeclimate.com/github/Widdershin/helix-pi)
 [![Stories in Ready](https://badge.waffle.io/Widdershin/helix-pi.png?label=ready&title=Ready)](https://waffle.io/Widdershin/helix-pi)
+
+* * *
+
 # helix-pi
 Accessible game development, powered by genetic programming
 
