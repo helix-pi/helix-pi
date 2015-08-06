@@ -25,10 +25,19 @@ function breed (mum, dad) {
 // The selected individual is the first one who's value is greater than the random number
 // .find(individual => individual.rank > randomSelectionNumber)
 
+function calculateTotalFitness (individuals) {
+  return _.sum(individuals.map(individual => individual.fitness.weightedScore));
+}
+
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
-  var fittestIndividuals = individuals
-    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore)
-    .slice(0, Math.ceil(population / 2));
+  const fittestIndividuals = individuals
+    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore);
+
+  const totalFitness = calculateTotalFitness(fittestIndividuals);
+
+  fittestIndividuals
+    .map(individual => [individual, (individual.fitness.weightedScore / totalFitness)])
+    .sort(([_, rankA], [__, rankB]) => rankA - rankB)
 
   fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
     .concat(fittestIndividuals)
@@ -43,9 +52,8 @@ function breedFittestIndividualsForParticipant (participant, individuals, popula
 function breedFittestIndividuals (individuals, population, fittestIndividualsOfAllTime) {
   return _.chain(individuals)
     .map((individuals, participant) => {
-      return [participant, breedFittestIndividualsForParticipant(participant, individuals, population, fittestIndividualsOfAllTime)]})
-    .object()
-    .value();
+      return [participant, breedFittestIndividualsForParticipant(participant, individuals, population, fittestIndividualsOfAllTime)];
+    }).object().value();
 }
 
 function eachSlice (array, sizeOfSlice) {
