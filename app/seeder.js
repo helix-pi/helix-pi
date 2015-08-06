@@ -81,9 +81,20 @@ function generateConditional (schema) {
   ])(schema);
 }
 
+function moveCommand (entity, api, {direction, distance}) {
+  api.move(entity, direction, distance);
+}
+
 // TODO - genericize
 function getRandomCommand (schema) {
-  var command = _.sample(['setVelocity', 'stop', 'applyForce']);
+  var command = _.sample(['setVelocity', 'stop', 'applyForce', 'move']);
+
+  if (command === 'move') {
+    const direction = _.sample(schema.move.takes);
+    const distance = getRandomFloat(0, 5);
+
+    return functionWithPackedArgs({direction, distance}, moveCommand);
+  }
 
   if (command === 'setVelocity') {
     const velocity = {

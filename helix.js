@@ -1,3 +1,5 @@
+require('babel/register');
+
 const breedFittestIndividuals = require('./app/breeding');
 const Seeder = require('./app/seeder');
 const createApi = require('./app/api');
