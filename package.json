@@ -4,10 +4,11 @@
   "description": "Accessible game development, powered by genetic programming",
   "dependencies": {
     "babel": "^5.2.15",
-    "lodash": "^3.8.0"
+    "lodash": "^3.8.0",
+    "mocha": "^2.2.5"
   },
   "scripts": {
-    "test": "mocha --compilers js:babel/register"
+    "test": "./node_modules/mocha/bin/mocha --compilers js:babel/register"
   },
   "main": "./helix.js",
   "repository": {
