@@ -48,12 +48,26 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
 
   const activeEntities = entities.filter(entity => entity.active);
 
+  // HERE BE FOR LOOPS AND VAR (for the sake of performance)
+
   function simulateFrame (frame) {
-    activeEntities.forEach(simulateEntity.bind(this, frame));
+    var activeEntity;
+
+    for (var entityIndex = 0; entityIndex < activeEntities.length; entityIndex++ ) {
+      activeEntity = activeEntities[entityIndex];
+      simulateEntity(frame, activeEntity);
+    }
   }
 
   function simulateEntity (frame, entity) {
-    _.each(entity.individual, simulateGene.bind(this, frame, entity));
+    var gene;
+
+    for (var geneIndex = 0; geneIndex < entity.individual.length; geneIndex++) {
+      gene = entity.individual[geneIndex];
+
+      simulateGene(frame, entity, gene);
+    }
+
     api.update(entity);
   };
 
@@ -61,7 +75,11 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
     gene(entity, api, frame);
   }
 
-  _.times(numberOfFrames, simulateFrame);
+  const maxFrame = currentFrame + numberOfFrames;
+
+  for (var frame = currentFrame; frame < maxFrame; frame++) {
+    simulateFrame(frame);
+  }
 }
 
 module.exports = simulateWorld;
