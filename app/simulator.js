@@ -21,11 +21,11 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
 
   function tweenEntity (entity, currentFrame) {
     entity.moveToFrame(currentFrame);
-  };
+  }
 
   function tweenInactiveEntitiesToFrame (entities, currentFrame) {
     _.filter(entities, 'active', false).forEach(entity => tweenEntity(entity, currentFrame));
-  };
+  }
 
   function checkCollision (entity, currentFrame) {
     tweenInactiveEntitiesToFrame(entities, currentFrame);
@@ -53,7 +53,7 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
   function simulateFrame (frame) {
     var activeEntity;
 
-    for (var entityIndex = 0; entityIndex < activeEntities.length; entityIndex++ ) {
+    for (var entityIndex = 0; entityIndex < activeEntities.length; entityIndex++) {
       activeEntity = activeEntities[entityIndex];
       simulateEntity(frame, activeEntity);
     }
@@ -69,7 +69,7 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
     }
 
     api.update(entity);
-  };
+  }
 
   function simulateGene (frame, entity, gene) {
     gene(entity, api, frame);
