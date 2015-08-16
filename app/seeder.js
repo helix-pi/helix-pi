@@ -2,9 +2,6 @@ var _ = require('lodash');
 var getRandomFloat = require('../lib/get-random-float');
 var getRandomInt = require('../lib/get-random-int');
 
-const COMMAND = 'command';
-const QUERY = 'query';
-
 function functionWithPackedArgs (args, f) {
   const wrapper = (entity, api, currentFrame) => {
     return f(entity, api, Object.assign(args, {currentFrame}));
@@ -109,7 +106,7 @@ function getRandomCommand (schema) {
 
   if (command === 'stop') {
     return (entity, api) => api.stop(entity);
-  };
+  }
 
   if (command === 'applyForce') {
     const forceRange = 0.3;
@@ -121,7 +118,7 @@ function getRandomCommand (schema) {
     return functionWithPackedArgs({force}, (entity, api, {force}) =>
       api.applyForce(entity, force)
     );
-  };
+  }
 }
 
 function _unconditional (entity, api, {command}) {
@@ -130,13 +127,13 @@ function _unconditional (entity, api, {command}) {
 
 function unconditional (schema, command) {
   return functionWithPackedArgs({command}, _unconditional);
-};
+}
 
 function _conditional (entity, api, {currentFrame, conditionalToCheck, command}) {
   if (conditionalToCheck(entity, api, currentFrame)) {
     command(entity, api);
-  };
-};
+  }
+}
 
 function conditional (schema, command) {
   const conditionalToCheck = generateConditional(schema);
@@ -149,7 +146,7 @@ function _ifElse (entity, api, {currentFrame, conditionalToCheck, command, alter
     command(entity, api);
   } else {
     alternateCommand(entity, api);
-  };
+  }
 }
 
 function ifElse (schema, command, alternateCommand) {
@@ -167,7 +164,7 @@ function newNode (schema) {
     conditional,
     ifElse
   ])(schema, command, alternateCommand);
-};
+}
 
 function generateIndividual (schema) {
   var entropy = getRandomInt(1, 20);
@@ -181,7 +178,7 @@ var Seeder = {
   make (schema, numberOfIndividuals) {
     return _.range(numberOfIndividuals).map(() => {
       return generateIndividual(schema);
-    })
+    });
   }
 };
 

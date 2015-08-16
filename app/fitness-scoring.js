@@ -68,7 +68,7 @@ function scoreScenarios (scenarios, individuals) {
     const [scenario, scenarioScores] = score;
     return allScenarioScores.set(scenario, scenarioScores);
   }, new Map());
-};
+}
 
 function scoreScenario (scenario, individuals) {
   return scenario.participants.map(participant => {

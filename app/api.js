@@ -83,7 +83,7 @@ function createApi (implementation) {
         x: 0,
         y: -distance
       }
-    }
+    };
 
     entity.x += velocity[direction].x;
     entity.y += velocity[direction].y;
@@ -102,7 +102,7 @@ function createApi (implementation) {
   }, implementation.checkCollision);
 
   return api;
-};
+}
 
 module.exports = createApi;
 

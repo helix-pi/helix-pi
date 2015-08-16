@@ -31,15 +31,14 @@ function breedFittestIndividualsForParticipant (participant, individuals, popula
 function breedFittestIndividuals (individuals, population, fittestIndividualsOfAllTime) {
   return _.chain(individuals)
     .map((individuals, participant) => {
-      return [participant, breedFittestIndividualsForParticipant(participant, individuals, population, fittestIndividualsOfAllTime)]})
-    .object()
-    .value();
+      return [participant, breedFittestIndividualsForParticipant(participant, individuals, population, fittestIndividualsOfAllTime)];
+    }).object().value();
 }
 
 function eachSlice (array, sizeOfSlice) {
   return _.chain(array).groupBy((item, index) => {
     return Math.floor(index / sizeOfSlice);
   }).toArray().value();
-};
+}
 
 module.exports = breedFittestIndividuals;

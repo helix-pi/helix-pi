@@ -1,5 +1,7 @@
+/* globals describe, it */
+
 var run = require('../helix');
-var assert = require("assert");
+var assert = require('assert');
 var _ = require('lodash');
 
 var fitnessScenarios = {
@@ -16,8 +18,8 @@ var fitnessScenarios = {
         }
       },
 
-      startPosition(name) {
-        return(this.initialPositions[name]);
+      startPosition (name) {
+        return this.initialPositions[name];
       },
 
       expectedPositions: {
@@ -48,8 +50,8 @@ var fitnessScenarios = {
         }
       },
 
-      startPosition(name) {
-        return(this.initialPositions[name]);
+      startPosition (name) {
+        return this.initialPositions[name];
       },
 
       expectedPositions: {
@@ -82,7 +84,6 @@ var fitnessScenarios = {
   }
 };
 
-
 describe('Helix', () => {
   describe('#run', () => {
     var results = run(fitnessScenarios, 20);
@@ -105,7 +106,7 @@ describe('Helix', () => {
       assert(
         inputResults['swordsunit'][0].fitness.score > 900,
         `Handle controls better: ${inputResults['swordsunit'][0].fitness.score}/900`
-      )
+      );
     });
   });
 });

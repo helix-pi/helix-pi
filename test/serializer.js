@@ -1,3 +1,5 @@
+/* globals describe, it */
+
 const {serialize, deserialize} = require('../app/serializer');
 const Seeder = require('../app/seeder');
 const createApi = require('../app/api');
@@ -6,10 +8,10 @@ const Entity = require('../app/entity');
 
 const assert = require('assert');
 
-function createStub () { return function stub () { throw 'you no execute me'; }; };
+function createStub () { return function () { throw 'you no execute me'; }; }
 
-describe("serialization", () => {
-  it("serializes and deserializes", () => {
+describe('serialization', () => {
+  it('serializes and deserializes', () => {
     var stubApi = createApi({
       checkCollision: createStub(),
       checkButtonDown: createStub(),
@@ -22,7 +24,7 @@ describe("serialization", () => {
     const deserializedIndividual = deserialize(serializedIndividual);
 
     assert.equal(deserialize(serializedIndividual).length, individual.length);
-    assert.equal(typeof deserialize(serializedIndividual)[0], "function");
+    assert.equal(typeof deserialize(serializedIndividual)[0], 'function');
 
     simulateWorld([new Entity(deserializedIndividual, {x: 0, y: 0}, [], true)], 10, []);
     simulateWorld([new Entity(individual, {x: 0, y: 0}, [], true)], 10, []);

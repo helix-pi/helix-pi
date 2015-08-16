@@ -20,7 +20,7 @@ function arrayToObject (array) {
 }
 
 function fillInIndividuals (individuals, population, participants) {
-  function createStub () { return function stub () { throw 'you no execute me'; }; };
+  function createStub () { return function stub () { throw 'you no execute me'; }; }
 
   const stubApi = createApi({
     checkCollision: createStub(),

@@ -32,7 +32,7 @@ function checkReturnType (name, options, f) {
 
     if (!checker(options.returns, result)) {
       throw new TypeError(`${name} returned '${result}' (${typeof result}). Expected return type: ${toString(options.returns)}`);
-    };
+    }
 
     return result;
   };

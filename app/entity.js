@@ -21,8 +21,6 @@ class Entity {
       };
     };
 
-    var firstPosition = _.first(this.positions);
-
     var that = this;
     var getPositionAt = function (positions, frameToFind) {
       var totalFrames = _.last(that.positions).frame;
