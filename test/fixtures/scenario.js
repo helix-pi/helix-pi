@@ -1,5 +1,5 @@
 
-function createScenario() {
+function createScenario () {
   return {
     id: 1,
     participants: ['Nick'],
@@ -17,6 +17,6 @@ function createScenario() {
         }
       ]
     }
-  }
+  };
 }
 module.exports = createScenario;

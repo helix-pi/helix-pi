@@ -31,13 +31,8 @@ function calculateTotalFitness (individuals) {
 
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
   const fittestIndividuals = individuals
-    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore);
-
-  const totalFitness = calculateTotalFitness(fittestIndividuals);
-
-  fittestIndividuals
-    .map(individual => [individual, (individual.fitness.weightedScore / totalFitness)])
-    .sort(([_, rankA], [__, rankB]) => rankA - rankB)
+    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore)
+    .slice(0, Math.ceil(population / 2));
 
   fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
     .concat(fittestIndividuals)
@@ -60,6 +55,6 @@ function eachSlice (array, sizeOfSlice) {
   return _.chain(array).groupBy((item, index) => {
     return Math.floor(index / sizeOfSlice);
   }).toArray().value();
-};
+}
 
 module.exports = breedFittestIndividuals;

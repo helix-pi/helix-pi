@@ -1,3 +1,5 @@
+/* globals describe, it */
+
 const Seeder = require('../app/seeder');
 const createApi = require('../app/api');
 const simulateWorld = require('../app/simulator');
@@ -7,10 +9,10 @@ const prettyPrint = require('../app/pretty-print');
 const _ = require('lodash');
 const assert = require('assert');
 
-function createStub () { return function stub () { throw 'you no execute me'; }; };
+function createStub () { return function stub () { throw 'you no execute me'; }; }
 
-describe("determinism", () => {
-  it("individuals do the same thing if run multiple times", () => {
+describe('determinism', () => {
+  it('individuals do the same thing if run multiple times', () => {
     var stubApi = createApi({
       checkCollision: createStub(),
       checkButtonDown: createStub(),

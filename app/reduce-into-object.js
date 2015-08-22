@@ -3,7 +3,6 @@ function reduceIntoObject (keyValues) {
     (object, keyValue) => Object.assign(object, keyValue),
     {}
   );
-};
-
+}
 
 module.exports = reduceIntoObject;

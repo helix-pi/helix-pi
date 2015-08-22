@@ -10,7 +10,7 @@ function serializeGene (gene) {
 }
 
 function serializeArgs (args) {
-  if (args === undefined) { return args };
+  if (args === undefined) { return args; }
 
   return Object.keys(args)
     .map(key => serializeArgument(key, args[key]))
@@ -23,7 +23,7 @@ function serializeArgument (argument, value) {
   }
 
   return {[argument]: value};
-};
+}
 
 function deserialize (str) {
   const deserializedResult = JSON.parse(str);
@@ -80,7 +80,7 @@ serialize.results = (results) => {
   return JSON.stringify(Object.keys(results).map(participant => {
     return serializeResult(participant, results[participant]);
   }).reduce((serializedResults, result) => Object.assign(serializedResults, result), {}));
-}
+};
 
 function serializeResult (participant, individuals) {
   return {[participant]: individuals.map(serialize)};
@@ -94,7 +94,7 @@ deserialize.results = (str) => {
 
     return {[participant]: individuals.map(deserialize)};
   }).reduce((deserializedResults, result) => Object.assign(deserializedResults, result), {});
-}
+};
 
 module.exports = {
   serialize,

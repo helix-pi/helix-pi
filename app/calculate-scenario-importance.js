@@ -34,7 +34,7 @@ function highestFitnessForParticipantPerScenario (participant, fitnesses) {
       };
     }).valuesArray()
   );
-};
+}
 
 function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) {
   return reduceIntoObject(participants.map(participant => {
@@ -45,14 +45,14 @@ function getHighestFitnessesForScenarioForParticipant (participants, fitnesses) 
       )
     };
   }));
-};
+}
 
 function createScenarioImportances (fitnessForParticipantPerScenario) {
   return Object.keys(fitnessForParticipantPerScenario)
     .map(participant => ({participant, fitnesses: fitnessForParticipantPerScenario[participant]}))
     .map(({participant, fitnesses}) => ({[participant]: calculateImportance(fitnesses)}))
     .reduce((importances, importance) => Object.assign(importances, importance), {});
-};
+}
 
 function replaceInfinityWithZero (number) {
   if (number === Infinity) {
@@ -67,8 +67,7 @@ function calculateImportance (fitnesses) {
     .map(scenarioId => ({scenarioId, fitness: fitnesses[scenarioId]}))
     .map(({scenarioId, fitness}) => ({[scenarioId]: replaceInfinityWithZero(MAX_FITNESS / fitness)}))
     .reduce((importance, scenarioImportance) => Object.assign(importance, scenarioImportance), {});
-};
-
+}
 
 function calculateScenarioImportances (participants, fitnesses) {
   return createScenarioImportances(

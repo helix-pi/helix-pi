@@ -17,10 +17,10 @@ const _ = require('lodash');
 
 function arrayToObject (array) {
   return reduceIntoObject(array.map((value, key) => ({[key]: value})));
-};
+}
 
 function fillInIndividuals (individuals, population, participants) {
-  function createStub () { return function stub () { throw 'you no execute me'; }; };
+  function createStub () { return function stub () { throw 'you no execute me'; }; }
 
   const stubApi = createApi({
     checkCollision: createStub(),
@@ -33,7 +33,7 @@ function fillInIndividuals (individuals, population, participants) {
 
     if (existing === undefined) {
       individuals[participant] = existing = [];
-    };
+    }
 
     const numberOfIndividualsToBreed = population - existing.length;
     const newIndividuals = Seeder.make(stubApi, numberOfIndividualsToBreed);
