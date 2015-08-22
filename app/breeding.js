@@ -13,21 +13,6 @@ function breed (mum, dad) {
   ];
 }
 
-// TODO
-// Normalize fitness values by dividing each of them by totalFitness
-// Sort descending
-// Rank individuals by accumulating across them
-//  The rank of an individual is it's normalized fitness
-//    plus
-//  the rank of all preceding individuals
-//
-// To select an individual for breeding, select a random number between 0 and 1
-// The selected individual is the first one who's value is greater than the random number
-// .find(individual => individual.rank > randomSelectionNumber)
-
-function calculateTotalFitness (individuals) {
-  return _.sum(individuals.map(individual => individual.fitness.weightedScore));
-}
 
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
   const fittestIndividuals = individuals
