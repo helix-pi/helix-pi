@@ -1,5 +1,7 @@
+const _ = require('lodash');
+
 function mutateIndividual (individual) {
-  return individual;
+  return _.shuffle(individual);
 }
 
 module.exports = mutateIndividual;
