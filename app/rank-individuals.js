@@ -16,7 +16,7 @@ function assignNormalizedFitness (totalFitness) {
 }
 
 function sortByFitnessDescending (individuals) {
-  return individuals.sort((a, b) => a.normalizedFitness > b.normalizedFitness);
+  return individuals.sort((a, b) => a.normalizedFitness - b.normalizedFitness);
 }
 
 function assignRank (accumulatedRank, individual) {
@@ -32,7 +32,7 @@ function rankIndividuals (individuals) {
 
   sortedIndividuals.reduce(assignRank, 0);
 
-  return sortByFitnessDescending(individuals);
+  return sortedIndividuals;
 }
 
 module.exports = rankIndividuals;

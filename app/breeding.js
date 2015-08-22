@@ -34,7 +34,14 @@ function breedFittestIndividualsForParticipant (participant, individuals, popula
 
   const breedingPairs = eachSlice(individualsToBreed, 2);
 
-  return _.flatten(breedingPairs.map(pair => breed.apply(null, pair)));
+  const fittestIndividuals = individuals
+    .sort((a, b) => b.fitness.score - a.fitness.score);
+
+  const elite = fittestIndividuals.slice(0, 2);
+
+  const newbornIndividuals = breedingPairs.map(pair => breed.apply(null, pair));
+
+  return elite.concat(_.flatten(newbornIndividuals));
 }
 
 function breedFittestIndividuals (individuals, population, fittestIndividualsOfAllTime) {
