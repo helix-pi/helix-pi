@@ -1,5 +1,7 @@
-var getRandomInt = require('../lib/get-random-int');
-var _ = require('lodash');
+const rankIndividuals = require('./rank-individuals');
+
+const getRandomInt = require('../lib/get-random-int');
+const _ = require('lodash');
 
 function breed (mum, dad) {
   const genes = mum.concat(dad);
@@ -13,20 +15,26 @@ function breed (mum, dad) {
   ];
 }
 
+function selectIndividualForBreeding (individuals) {
+  const rand = Math.random();
+
+  return individuals.find(i => i.rank >= rand);
+}
 
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
-  const fittestIndividuals = individuals
-    .sort((a, b) => b.fitness.weightedScore - a.fitness.weightedScore)
-    .slice(0, Math.ceil(population / 2));
+  rankIndividuals(individuals);
 
   fittestIndividualsOfAllTime[participant] = fittestIndividualsOfAllTime[participant]
-    .concat(fittestIndividuals)
+    .concat(individuals)
     .sort((a, b) => b.fitness.score - a.fitness.score)
     .slice(0, Math.ceil(population / 4));
 
-  var breedingPairs = eachSlice(fittestIndividuals, 2);
+  const individualsToBreed = _.range(individuals.length / 2)
+    .map(_ => selectIndividualForBreeding(individuals));
 
-  return _.flatten(breedingPairs.map(pair => breed.apply(this, pair)));
+  const breedingPairs = eachSlice(individualsToBreed, 2);
+
+  return _.flatten(breedingPairs.map(pair => breed.apply(null, pair)));
 }
 
 function breedFittestIndividuals (individuals, population, fittestIndividualsOfAllTime) {

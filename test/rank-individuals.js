@@ -19,4 +19,16 @@ describe('rankIndividuals', () => {
       individuals.map(i => i.expectedRank.toFixed(5))
     );
   });
+
+  it("doesn't barf if individuals have 0 fitness", () => {
+    const individuals = [
+      {fitness: {weightedScore: 0}},
+      {fitness: {weightedScore: 0}},
+      {fitness: {weightedScore: 0}}
+    ];
+
+    rankIndividuals(individuals);
+
+    assert.equal(individuals[0].rank, 1);
+  });
 });
