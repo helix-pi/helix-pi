@@ -15,11 +15,33 @@ function breed (mum, dad) {
   ];
 }
 
+function selectPairForBreeding (individuals) {
+  const dadIndex = selectIndividualForBreeding(individuals);
+
+  const dad = individuals[dadIndex];
+
+  const otherIndividuals = individuals.slice(0);
+
+  otherIndividuals.splice(dadIndex, 1);
+
+  const mumIndex = selectIndividualForBreeding(otherIndividuals);
+
+  let mum = individuals[mumIndex];
+
+  if (mumIndex === -1) {
+    mum = _.first(otherIndividuals);
+  }
+
+  return [dad, mum];
+}
+
 function selectIndividualForBreeding (individuals) {
   const rand = Math.random();
 
-  return individuals.find(i => i.rank >= rand);
+  return individuals.findIndex(i => i.rank >= rand);
 }
+
+const numberOfEliteToKeep = 2;
 
 function breedFittestIndividualsForParticipant (participant, individuals, population, fittestIndividualsOfAllTime) {
   rankIndividuals(individuals);
@@ -29,15 +51,13 @@ function breedFittestIndividualsForParticipant (participant, individuals, popula
     .sort((a, b) => b.fitness.score - a.fitness.score)
     .slice(0, Math.ceil(population / 4));
 
-  const individualsToBreed = _.range(individuals.length / 2)
-    .map(_ => selectIndividualForBreeding(individuals));
-
-  const breedingPairs = eachSlice(individualsToBreed, 2);
+  const breedingPairs = _.range(individuals.length / 2 - numberOfEliteToKeep)
+    .map(_ => selectPairForBreeding(individuals));
 
   const fittestIndividuals = individuals
     .sort((a, b) => b.fitness.score - a.fitness.score);
 
-  const elite = fittestIndividuals.slice(0, 2);
+  const elite = fittestIndividuals.slice(0, numberOfEliteToKeep);
 
   const newbornIndividuals = breedingPairs.map(pair => breed.apply(null, pair));
 
