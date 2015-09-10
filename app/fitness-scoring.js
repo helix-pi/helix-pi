@@ -105,10 +105,17 @@ function scoreIndividualOnScenario (scenario, participant, individual) {
 
   var activeEntity = _.find(entities, 'active');
 
+  if (individual.positions === undefined) {
+    individual.positions = {};
+  }
+
+  individual.positions[scenario.id] = [[activeEntity.x, activeEntity.y]];
+
   return scenario.expectedPositions[participant].map(expectedPosition => {
     var frameCount = expectedPosition.frame - currentFrame;
 
     simulateWorld(entities, frameCount, scenario.input, currentFrame);
+    individual.positions[scenario.id].push([activeEntity.x, activeEntity.y]);
 
     currentFrame = expectedPosition.frame;
     return fitness(expectedPosition, activeEntity);

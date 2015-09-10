@@ -1,5 +1,5 @@
 function serialize (individual) {
-  return JSON.stringify({fitness: individual.fitness, individual: individual.map(serializeGene)});
+  return JSON.stringify({positions: individual.positions, fitness: individual.fitness, individual: individual.map(serializeGene)});
 }
 
 function serializeGene (gene) {
@@ -29,6 +29,7 @@ function deserialize (str) {
   const deserializedResult = JSON.parse(str);
   const individual = deserializedResult.individual.map(deserializeGene);
   individual.fitness = deserializedResult.fitness;
+  individual.positions = deserializedResult.positions;
 
   return individual;
 }
