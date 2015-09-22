@@ -1,5 +1,7 @@
 require('babel/register');
 
+const MUTATION_RATE = 0.15
+
 const breedFittestIndividuals = require('./app/breeding');
 const Seeder = require('./app/seeder');
 const createApi = require('./app/api');
@@ -89,7 +91,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
 
     _.each(individuals, (individualsForParticipant, participant) => {
       individuals[participant] = individualsForParticipant.map(individual => {
-        if (Math.random() > 0.5) {
+        if (Math.random() > MUTATION_RATE) {
           return mutated(individual);
         }
 
