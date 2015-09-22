@@ -1,7 +1,7 @@
 /* globals describe, it */
 
 const Seeder = require('../app/seeder');
-const createApi = require('../app/api');
+const createApi = require('./fixtures/api');
 const simulateWorld = require('../app/simulator');
 const Entity = require('../app/entity');
 const prettyPrint = require('../app/pretty-print');
@@ -13,11 +13,7 @@ function createStub () { return function stub () { throw 'you no execute me'; };
 
 describe('determinism', () => {
   it('individuals do the same thing if run multiple times', () => {
-    var stubApi = createApi({
-      checkCollision: createStub(),
-      checkButtonDown: createStub(),
-      checkButtonReleased: createStub()
-    });
+    var stubApi = createApi();
 
     _.times(10, () => {
       const individual = Seeder.make(stubApi, 1)[0];

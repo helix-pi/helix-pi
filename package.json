@@ -8,8 +8,8 @@
     "mocha": "^2.2.5"
   },
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha --compilers js:babel/register",
-    "autotest": "./node_modules/mocha/bin/mocha --compilers js:babel/register -c -R min --watch"
+    "test": "./node_modules/mocha/bin/mocha --compilers js:babel/register --recursive",
+    "autotest": "./node_modules/mocha/bin/mocha --compilers js:babel/register -c -R min --watch --recursive"
   },
   "main": "./helix.js",
   "repository": {

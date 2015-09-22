@@ -1,8 +1,11 @@
 require('babel/register');
 
+const MUTATION_RATE = 0.15
+
 const breedFittestIndividuals = require('./app/breeding');
 const Seeder = require('./app/seeder');
 const createApi = require('./app/api');
+const mutated = require('./app/mutation');
 const {serialize, deserialize} = require('./app/serializer');
 const {
   scoreScenarios,
@@ -85,6 +88,16 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
       population,
       fittestIndividualsOfAllTime // OUT
     );
+
+    _.each(individuals, (individualsForParticipant, participant) => {
+      individuals[participant] = individualsForParticipant.map(individual => {
+        if (Math.random() > MUTATION_RATE) {
+          return mutated(individual);
+        }
+
+        return individual;
+      })
+    });
   });
 
   return fittestIndividualsOfAllTime;
