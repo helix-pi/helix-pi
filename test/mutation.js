@@ -17,8 +17,7 @@ describe('mutation', () => {
     assert.notDeepEqual(
       individual,
       mutatedIndividual,
-      "Mutated and normal individuals are the same"
+      'Mutated and normal individuals are the same'
     );
-
   });
 });
