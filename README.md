@@ -125,5 +125,4 @@ const fitnessScenarios = {
 const results = helixPi(fitnessScenarios, 100, 32);
 
 const bestIndividual = results.swordsunit[0];
-
 ```
