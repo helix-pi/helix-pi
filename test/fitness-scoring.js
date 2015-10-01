@@ -10,8 +10,23 @@ const scenarioId = scenario.id;
 const scenarios = [scenario];
 
 describe('scoreScenario', () => {
-  it('assigns fitness scores for individuals', () => {
+  it('has a max of 1000 even for multiple scenarios', () => {
+    const individual = [
+      (entity, api) => api.setVelocity(entity, {x: 10, y: 0})
+    ];
 
+    const individuals = {
+      Nick: [individual]
+    };
+
+    const scenario2 = Object.assign({}, scenario, {id: 2});
+
+    const fitnesses = scoreScenarios([scenario, scenario2], individuals);
+
+    assert.equal(boilDownIndividualScore(individual, 'Nick', fitnesses, {Nick: {1: 1, 2: 1}}).score, 1000);
+  });
+
+  it('assigns fitness scores for individuals', () => {
     const individual = [
       (entity, api) => api.setVelocity(entity, {x: 10, y: 0})
     ];

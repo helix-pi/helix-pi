@@ -6,6 +6,10 @@ require('../lib/map-extensions'); // To the reader, my apologies
 
 const MAX_FITNESS = 1000;
 
+function mean (items) {
+  return _.sum(items) / items.length;
+}
+
 function fitness (expectedPosition, entity) {
   const distance = {
     x: Math.abs(expectedPosition.x - entity.x),
@@ -20,12 +24,12 @@ function limitTo (limit, number) {
 }
 
 function meanOfSquares (numbers) {
-  return Math.sqrt(_.sum(numbers.map(number => Math.pow(limitTo(0, number), 2)))) / numbers.length;
+  return Math.sqrt(mean(numbers.map(number => Math.pow(limitTo(0, number), 2))));
 }
 
 function weightedAverage (scoresPerScenario) {
   return {
-    score: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.score)),
+    score: mean(scoresPerScenario.valuesArray().map(score => score.score)),
     weightedScore: meanOfSquares(scoresPerScenario.valuesArray().map(score => score.weightedScore))
   };
 }
