@@ -55,7 +55,7 @@ function positionConditional (schema) {
 
 function collisionConditional (schema) {
   return (entity, api, {currentFrame}) => {
-    return api.checkCollision(entity, currentFrame).length > 1;
+    return api.checkCollision(entity, currentFrame);
   };
 }
 
