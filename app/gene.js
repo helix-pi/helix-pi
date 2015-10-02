@@ -83,9 +83,19 @@ function moveCommand (entity, api, {direction, distance}) {
   api.move(entity, direction, distance);
 }
 
+function rotateCommand (entity, api, {rotation}) {
+  api.rotate(entity, rotation);
+}
+
 // TODO - genericize
 function getRandomCommand (schema) {
-  var command = _.sample(['setVelocity', 'stop', 'applyForce', 'move']);
+  var command = _.sample(['setVelocity', 'stop', 'applyForce', 'move', 'rotate']);
+
+  if (command === 'rotate') {
+    const rotation = getRandomFloat(-180, 180);
+
+    return functionWithPackedArgs({rotation}, rotateCommand);
+  }
 
   if (command === 'move') {
     const direction = _.sample(schema.move.takes);

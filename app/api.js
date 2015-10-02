@@ -47,6 +47,20 @@ function createApi (implementation) {
     entity.velocity = {x: 0, y: 0};
   });
 
+  declareApiCall('rotate', {
+    type: COMMAND,
+    takes: [{from: -180, to: 180}],
+    returns: undefined
+  }, function (entity, relativeDirection) {
+    const oldEntityVelocity = Object.assign({}, entity.velocity);
+    const angle = relativeDirection * (Math.PI / 180);
+
+    entity.velocity = {
+      x: oldEntityVelocity.x * Math.cos(angle) - oldEntityVelocity.y * Math.sin(angle),
+      y: oldEntityVelocity.x * Math.sin(angle) + oldEntityVelocity.y * Math.cos(angle)
+    }
+  });
+
   declareApiCall('getPosition', {
     type: QUERY,
     takes: [],
