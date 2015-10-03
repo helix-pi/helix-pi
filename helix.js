@@ -1,4 +1,7 @@
-require('babel/register');
+if (Array.from === undefined) {
+  // only require shim if needed
+  require('babel/register');
+}
 
 const MUTATION_RATE = 0.15
 
