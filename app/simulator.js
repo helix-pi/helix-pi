@@ -62,12 +62,7 @@ function simulateWorld (entities, numberOfFrames, input = [], currentFrame = 0) 
   function simulateEntity (frame, entity) {
     var gene;
 
-    // TODO - unpick this hack, support create nodes
-    if (frame === 0 && entity.individual.length > 0) {
-      simulateGene(frame, entity, entity.individual[0]);
-    }
-
-    for (var geneIndex = 1; geneIndex < entity.individual.length; geneIndex++) {
+    for (var geneIndex = 0; geneIndex < entity.individual.length; geneIndex++) {
       gene = entity.individual[geneIndex];
 
       simulateGene(frame, entity, gene);

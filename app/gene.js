@@ -71,11 +71,20 @@ function inputConditional (schema) {
   return functionWithPackedArgs(args, _inputConditional);
 }
 
+function _firstFrameConditional (entity, api, {currentFrame}) {
+  return currentFrame === 0;
+}
+
+function firstFrameConditional (schema) {
+  return functionWithPackedArgs({}, _firstFrameConditional);
+}
+
 function generateConditional (schema) {
   return _.sample([
     positionConditional,
     collisionConditional,
-    inputConditional
+    inputConditional,
+    firstFrameConditional
   ])(schema);
 }
 
