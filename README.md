@@ -24,9 +24,9 @@ I want to enable people to make games without writing code. I want basic game de
 Huh.
 ---
 
-Yeah, exactly. So at the time of writing, I've made an game development tool that runs in the browser. It currently supports designing movement scenarios for a character, including stuff like "the right key is pressed from frame 60 to 120". It can generate programs that respond to input and move the character. It's actually pretty good at making simple programs already.
+Yeah, exactly. So at the time of writing, I've made an game development tool that runs in the browser. It currently supports designing movement scenarios for different characters in a scene, including stuff like "the right key is pressed from frame 60 to 120". It can generate programs that respond to input and move the character. It's actually pretty good at making simple programs already.
 
-Helix Pi is split into two separate repositories at the moment. This one, helix-pi, is a node module that evolves programs based on scenarios and an API to control characters. There is also [helix-pi-editor](Widdershin/helix-pi-editor), which is a Kiwi.js powered web editor. It's live at [helix-pi.net](http://helix-pi.net). It currently supports designing one scenario, where a character moves around, potentially in response to input.
+Helix Pi is split into two separate repositories at the moment. This one, helix-pi, is a node module that evolves programs based on scenarios and an API to control characters. There is also [helix-pi-editor](Widdershin/helix-pi-editor), which is a Kiwi.js powered web editor. It's live at [helix-pi.net](http://helix-pi.net). It currently supports designing multiple scenarios, where characters move around, collide and respond to input.
 
 My [first major milestone](https://github.com/Widdershin/helix-pi/milestones/Pong) is to make Pong.
 
