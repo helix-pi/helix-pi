@@ -12,6 +12,11 @@ function declareApiCall (name, options, f) {
   api[name] = wrappedFunction;
 }
 
+// Define a standard for takes and returns
+// must respect positional arguments and contain enough information that arguments can be generated
+// specify verify/generate functions?
+// or provide tools like range and select
+
 function createApi (implementation) {
   declareApiCall('update', {
     type: UPDATE,
