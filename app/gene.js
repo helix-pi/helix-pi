@@ -102,8 +102,8 @@ function getRandomCommand (schema) {
   return functionWithPackedArgs({command, commandArgs}, commandGene);
 }
 
-function _unconditional (entity, api, {command}) {
-  return command(entity, api);
+function _unconditional (entity, api, {command, currentFrame}) {
+  return command(entity, api, currentFrame);
 }
 
 function unconditional (schema, command) {
@@ -124,9 +124,9 @@ function conditional (schema, command) {
 
 function _ifElse (entity, api, {currentFrame, conditionalToCheck, command, alternateCommand}) {
   if (conditionalToCheck(entity, api, currentFrame)) {
-    return command(entity, api);
+    return command(entity, api, currentFrame);
   } else {
-    return alternateCommand(entity, api);
+    return alternateCommand(entity, api, currentFrame);
   }
 }
 
