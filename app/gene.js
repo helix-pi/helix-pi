@@ -91,9 +91,11 @@ function commandGene (entity, api, {command, commandArgs}) {
   return api[command].apply(null, [entity].concat(commandArgs));
 }
 
-// TODO - genericize
 function getRandomCommand (schema) {
-  const command = _.sample(['setVelocity', 'stop', 'applyForce', 'move']);
+  const possibleCommands = Object.keys(schema)
+    .filter(possibleCommand => schema[possibleCommand].type === 'command');
+
+  const command = _.sample(possibleCommands);
 
   const commandArgs = schema[command].parameters();
 
