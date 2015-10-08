@@ -1,4 +1,7 @@
+const _ = require('lodash');
+
 const {either, checkReturnType} = require('./type-checking');
+const getRandomFloat = require('../lib/get-random-float');
 
 var api = {};
 
@@ -12,28 +15,50 @@ function declareApiCall (name, options, f) {
   api[name] = wrappedFunction;
 }
 
+// Define a standard for takes and returns
+// must respect positional arguments and contain enough information that arguments can be generated
+// specify verify/generate functions?
+// or provide tools like range and select
+
 function createApi (implementation) {
   declareApiCall('update', {
     type: UPDATE,
     takes: null,
-    returns: undefined
+    returns: undefined,
+    parameters: () => []
   }, function (entity) {
     entity.x += entity.velocity.x;
     entity.y += entity.velocity.y;
   });
 
+  const velocityRange = 10;
+
   declareApiCall('setVelocity', {
     type: COMMAND,
     takes: {x: 0, y: 0},
-    returns: undefined
+    returns: undefined,
+    parameters: () => [
+      {
+        x: getRandomFloat(-velocityRange, velocityRange),
+        y: getRandomFloat(-velocityRange, velocityRange)
+      }
+    ]
   }, function (entity, velocity) {
     entity.velocity = Object.assign({}, velocity);
   });
 
+  const forceRange = 0.3;
+
   declareApiCall('applyForce', {
     type: COMMAND,
     takes: {x: 0, y: 0},
-    returns: undefined
+    returns: undefined,
+    parameters: () => [
+      {
+        x: getRandomFloat(-forceRange, forceRange),
+        y: getRandomFloat(-forceRange, forceRange)
+      }
+    ]
   }, function (entity, velocity) {
     entity.velocity.x += velocity.x;
     entity.velocity.y += velocity.y;
@@ -42,7 +67,8 @@ function createApi (implementation) {
   declareApiCall('stop', {
     type: COMMAND,
     takes: null,
-    returns: undefined
+    returns: undefined,
+    parameters: () => []
   }, function (entity) {
     entity.velocity = {x: 0, y: 0};
   });
@@ -50,7 +76,8 @@ function createApi (implementation) {
   declareApiCall('getPosition', {
     type: QUERY,
     takes: [],
-    returns: {x: 0, y: 0}
+    returns: {x: 0, y: 0},
+    parameters: () => []
   }, function (entity) {
     return {
       x: entity.x,
@@ -58,10 +85,17 @@ function createApi (implementation) {
     };
   });
 
+  const possibleDirections = ['right', 'left', 'up', 'down'];
+  const moveRange = {min: 0, max: 5};
+
   declareApiCall('move', {
     type: COMMAND,
-    takes: ['right', 'left', 'up', 'down'],
-    returns: undefined
+    takes: possibleDirections,
+    returns: undefined,
+    parameters: () => [
+      _.sample(possibleDirections),
+      getRandomFloat(moveRange.min, moveRange.max)
+    ]
   }, function (entity, direction, distance) {
     const velocity = {
       right: {
@@ -89,16 +123,20 @@ function createApi (implementation) {
     entity.y += velocity[direction].y;
   });
 
+  const possibleButtons = ['right', 'left', 'up', 'down', 'w', 'a', 's', 'd'];
+
   declareApiCall('checkButtonDown', {
     type: QUERY,
-    takes: ['right', 'left', 'up', 'down'],
-    returns: either(true, false)
+    takes: possibleButtons,
+    returns: either(true, false),
+    parameters: () => [_.sample(possibleButtons)]
   }, implementation.checkButtonDown);
 
   declareApiCall('checkCollision', {
     type: QUERY,
-    takes: null,
-    returns: either(true, false)
+    takes: [],
+    returns: either(true, false),
+    parameters: () => []
   }, implementation.checkCollision);
 
   return api;

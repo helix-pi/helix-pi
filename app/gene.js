@@ -1,6 +1,5 @@
 const _ = require('lodash');
 
-const getRandomFloat = require('../lib/get-random-float');
 const getRandomInt = require('../lib/get-random-int');
 
 function functionWithPackedArgs (args, f) {
@@ -88,51 +87,23 @@ function generateConditional (schema) {
   ])(schema);
 }
 
-function moveCommand (entity, api, {direction, distance}) {
-  api.move(entity, direction, distance);
+function commandGene (entity, api, {command, commandArgs}) {
+  return api[command].apply(null, [entity].concat(commandArgs));
 }
 
-// TODO - genericize
 function getRandomCommand (schema) {
-  var command = _.sample(['setVelocity', 'stop', 'applyForce', 'move']);
+  const possibleCommands = Object.keys(schema)
+    .filter(possibleCommand => schema[possibleCommand].type === 'command');
 
-  if (command === 'move') {
-    const direction = _.sample(schema.move.takes);
-    const distance = getRandomFloat(0, 5);
+  const command = _.sample(possibleCommands);
 
-    return functionWithPackedArgs({direction, distance}, moveCommand);
-  }
+  const commandArgs = schema[command].parameters();
 
-  if (command === 'setVelocity') {
-    const velocity = {
-      x: getRandomInt(-10, 10),
-      y: getRandomInt(-10, 10)
-    };
-
-    return functionWithPackedArgs({velocity}, (entity, api, {velocity}) => {
-      api.setVelocity(entity, velocity);
-    });
-  }
-
-  if (command === 'stop') {
-    return (entity, api) => api.stop(entity);
-  }
-
-  if (command === 'applyForce') {
-    const forceRange = 0.3;
-    const force = {
-      x: getRandomFloat(-forceRange, forceRange),
-      y: getRandomFloat(-forceRange, forceRange)
-    };
-
-    return functionWithPackedArgs({force}, (entity, api, {force}) =>
-      api.applyForce(entity, force)
-    );
-  }
+  return functionWithPackedArgs({command, commandArgs}, commandGene);
 }
 
-function _unconditional (entity, api, {command}) {
-  command(entity, api);
+function _unconditional (entity, api, {command, currentFrame}) {
+  return command(entity, api, currentFrame);
 }
 
 function unconditional (schema, command) {
@@ -141,7 +112,7 @@ function unconditional (schema, command) {
 
 function _conditional (entity, api, {currentFrame, conditionalToCheck, command}) {
   if (conditionalToCheck(entity, api, currentFrame)) {
-    command(entity, api);
+    return command(entity, api, currentFrame);
   }
 }
 
@@ -153,9 +124,9 @@ function conditional (schema, command) {
 
 function _ifElse (entity, api, {currentFrame, conditionalToCheck, command, alternateCommand}) {
   if (conditionalToCheck(entity, api, currentFrame)) {
-    command(entity, api);
+    return command(entity, api, currentFrame);
   } else {
-    alternateCommand(entity, api);
+    return alternateCommand(entity, api, currentFrame);
   }
 }
 
@@ -166,8 +137,8 @@ function ifElse (schema, command, alternateCommand) {
 }
 
 function Gene (schema) {
-  var command = getRandomCommand(schema);
-  var alternateCommand = getRandomCommand(schema);
+  const command = getRandomCommand(schema);
+  const alternateCommand = getRandomCommand(schema);
 
   return _.sample([
     unconditional,
