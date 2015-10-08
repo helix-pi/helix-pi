@@ -1,7 +1,7 @@
 const getRandomInt = require('../../lib/get-random-int');
 
 function removeGene (individual) {
-  const geneIndexToRemove = getRandomInt(individual.length);
+  const geneIndexToRemove = getRandomInt(0, individual.length);
 
   const newIndividual = individual.slice();
 

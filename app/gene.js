@@ -95,7 +95,7 @@ function getRandomCommand (schema) {
   const possibleCommands = Object.keys(schema)
     .filter(possibleCommand => schema[possibleCommand].type === 'command');
 
-  const command = _.sample(possibleCommands);
+  const command = 'move';
 
   const commandArgs = schema[command].parameters();
 

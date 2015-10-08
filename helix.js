@@ -25,15 +25,15 @@ function arrayToObject (array) {
   return reduceIntoObject(array.map((value, key) => ({[key]: value})));
 }
 
+function createStub () { return function stub () { throw 'you no execute me'; }; }
+
+const stubApi = createApi({
+  checkCollision: createStub(),
+  checkButtonDown: createStub(),
+  checkButtonReleased: createStub()
+});
+
 function fillInIndividuals (individuals, population, participants) {
-  function createStub () { return function stub () { throw 'you no execute me'; }; }
-
-  const stubApi = createApi({
-    checkCollision: createStub(),
-    checkButtonDown: createStub(),
-    checkButtonReleased: createStub()
-  });
-
   participants.forEach(participant => {
     let existing = individuals[participant];
 
@@ -95,7 +95,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     _.each(individuals, (individualsForParticipant, participant) => {
       individuals[participant] = individualsForParticipant.map(individual => {
         if (Math.random() > MUTATION_RATE) {
-          return mutated(individual);
+          return mutated(individual, stubApi);
         }
 
         return individual;

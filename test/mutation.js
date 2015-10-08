@@ -12,7 +12,7 @@ describe('mutation', () => {
   it('slightly changes the genetic code of an individual', () => {
     const individual = Seeder.make(api(), 1)[0];
 
-    const mutatedIndividual = mutateIndividual(individual);
+    const mutatedIndividual = mutateIndividual(individual, api());
 
     assert.notDeepEqual(
       individual,

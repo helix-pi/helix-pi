@@ -12,8 +12,8 @@ const mutations = [
   mutateGene
 ];
 
-function mutateIndividual (individual) {
-  return _.sample(mutations)(individual);
+function mutateIndividual (individual, schema) {
+  return _.sample(mutations)(individual, schema);
 }
 
 module.exports = mutateIndividual;
