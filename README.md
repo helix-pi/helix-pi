@@ -33,7 +33,7 @@ My [first major milestone](https://github.com/Widdershin/helix-pi/milestones/Pon
 API
 ---
 
-### `helixPi(fitnessScenarios, [generations=150], [population=32], [individuals={})]`
+### `helixPi(fitnessScenarios, [generations=150], [population=32], [individuals={}])`
 
 Takes some scenarios and uses genetic programming to write programs that act like those scenarios. Returns an object with a key of the participant name and the value of the best programs that were generated.
 
