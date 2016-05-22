@@ -50,10 +50,7 @@ function fillInIndividuals (individuals, population, participants) {
   return individuals;
 }
 
-function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
-  const scenarios = fitnessScenarios.scenarios;
-  const participants = fitnessScenarios.participants;
-
+function runBreedingProcess (scenarios, participants, generations, population, individuals) {
   let fittestIndividualsOfAllTime = _.chain(participants).map(participant => {
     return [participant, []];
   }).object().value();
@@ -64,7 +61,7 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
     };
   }));
 
-  _.times(generations, generation => {
+  _.times(generations, () => {
     fillInIndividuals(individuals, population, participants);
 
     scenarios.forEach((scenario, index) => {
@@ -99,11 +96,33 @@ function run (fitnessScenarios, generations=150, population=32, individuals = {}
         }
 
         return individual;
-      })
+      });
     });
   });
 
   return fittestIndividualsOfAllTime;
+}
+
+function run (fitnessScenarios, generations=150, population=32, individuals = {}) {
+  const scenarios = fitnessScenarios.scenarios;
+  const participants = fitnessScenarios.participants;
+
+  const scenarioResults = scenarios
+    .map(scenario => runBreedingProcess([scenario], participants, generations, population, individuals));
+
+  const bestIndividuals = {};
+
+  scenarioResults.forEach(scenario => {
+    Object.keys(scenario).forEach(individual => {
+      if (bestIndividuals[individual] === undefined) {
+        bestIndividuals[individual] = [];
+      }
+
+      bestIndividuals[individual] = bestIndividuals[individual].concat(scenario[individual]);
+    });
+  });
+
+  return runBreedingProcess(scenarios, participants, generations, population, bestIndividuals);
 }
 
 run.createApi = createApi; // TODO - something better than this surely
