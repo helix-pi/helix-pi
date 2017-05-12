@@ -1,19 +1,21 @@
 {
   "name": "helix-pi",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Accessible game development, powered by genetic programming",
-  "dependencies": {
-    "babel": "^5.2.15",
-    "lodash": "^3.8.0",
-    "mocha": "^2.2.5"
-  },
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha --compilers js:babel/register --recursive",
-    "autotest": "./node_modules/mocha/bin/mocha --compilers js:babel/register -c -R min --watch --recursive"
+    "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive",
+    "autotest": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
   },
-  "main": "./helix.js",
+  "main": "./helix.ts",
   "repository": {
     "type": "git",
     "url": "git://github.com/widdershin/helix-pi.git"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.41",
+    "@types/node": "^7.0.18",
+    "mocha": "^3.3.0",
+    "ts-node": "^3.0.4",
+    "typescript": "^2.3.2"
   }
 }
