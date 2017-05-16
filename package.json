@@ -3,6 +3,8 @@
   "version": "0.0.2",
   "description": "Accessible game development, powered by genetic programming",
   "scripts": {
+    "lint": "tslint -p tsconfig.json --type-check",
+    "lint/fix": "tslint -p tsconfig.json --type-check --fix",
     "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive",
     "test/auto": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
   },
@@ -16,6 +18,8 @@
     "@types/node": "^7.0.18",
     "mocha": "^3.3.0",
     "ts-node": "^3.0.4",
+    "tslint": "^5.2.0",
+    "tslint-config-standard": "^5.0.2",
     "typescript": "^2.3.2"
   }
 }

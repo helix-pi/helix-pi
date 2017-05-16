@@ -25,38 +25,38 @@ import * as assert from 'assert';
 type Input = {
   scenarios: Scenario[];
   actors: string[];
-}
+};
 
 type Output = {
   entities: {[key: string]: Entity};
-}
+};
 
 type Entity = {
   type: 'moveRight',
   id: string
-}
+};
 
 type Scenario = {
   actors: {[key: string]: ActorFrame[]};
-}
+};
 
 type Vector = {
   x: number;
   y: number;
-}
+};
 
 type ActorFrame = {
   frame: number;
   position: Vector;
-}
+};
 
 type SimulationOptions = {
   frames: number;
-}
+};
 
 type ActorPositions = {
   [key: string]: Vector;
-}
+};
 
 type EntityErrorLevels = {
   [key: string]: number;
@@ -79,9 +79,9 @@ function sum (array: number[]): number {
   return array.reduce(add, 0);
 }
 
-function simulateAndFindErrorLevel (entity: Entity, frames: ActorFrame[]) {;
+function simulateAndFindErrorLevel (entity: Entity, frames: ActorFrame[]) {
   const startingPosition = frames[0].position;
-  const errorLevels : number[] = [];
+  const errorLevels: number[] = [];
 
   frames.slice(1).reduce((position, frame) => {
     const updatedPosition = executeCode(entity, position);
@@ -98,7 +98,7 @@ function generateEntity (seed: number): Entity {
   return {
     type: 'moveRight',
     id: seed.toString()
-  }
+  };
 }
 
 // TODO - determinism
@@ -117,7 +117,7 @@ function helixPi (input: Input): Output {
   // Given an array of actor names
   // And a collection of scenarios
 
-  let foo : Entity | undefined = undefined;
+  let foo: Entity | undefined = undefined;
   // For each scenario
   input.scenarios.forEach(scenario => {
     //  For each actor
@@ -127,7 +127,7 @@ function helixPi (input: Input): Output {
       //   Simulate them in this scenario
 
       //   Assign them each an error level based on how far they are from the desired position at each frame
-      const errorLevels : EntityErrorLevels = {};
+      const errorLevels: EntityErrorLevels = {};
 
       entities.forEach(entity => {
         errorLevels[entity.id] = simulateAndFindErrorLevel(entity, scenario.actors[actor]);
@@ -166,19 +166,18 @@ function helixPi (input: Input): Output {
   // Repeat this process until ideal entities are found for each actor
   //  Or the max generations count is hit
 
-
   if (foo) {
     return {
       entities: {
         'keith': foo
       }
-    }
+    };
   }
 
   return {
     entities: {
     }
-  }
+  };
 }
 
 function executeCode (code: Entity, position: Vector) {
@@ -192,7 +191,7 @@ function executeCode (code: Entity, position: Vector) {
 function simulate (scenario: Scenario, output: Output, options: SimulationOptions): ActorPositions {
   const actors = Object.keys(scenario.actors);
 
-  const positions : ActorPositions = {};
+  const positions: ActorPositions = {};
 
   actors.forEach(actor => {
     positions[actor] = scenario.actors[actor][0].position;
