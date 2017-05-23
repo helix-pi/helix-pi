@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "tslint -p tsconfig.json --type-check",
     "lint/fix": "tslint -p tsconfig.json --type-check --fix",
-    "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive && npm run lint" ,
+    "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive && npm run lint",
     "test/auto": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
   },
   "main": "./helix.ts",
@@ -21,5 +21,8 @@
     "tslint": "^5.2.0",
     "tslint-config-standard": "^5.0.2",
     "typescript": "^2.3.2"
+  },
+  "dependencies": {
+    "random-js": "^1.0.8"
   }
 }

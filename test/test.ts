@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as Random from 'random-js';
 
 // What was wrong with the historic helix pi codebase?
 //
@@ -22,7 +23,15 @@ import * as assert from 'assert';
 // Helix pi takes a collection of scenarios and returns entities that behave as the actors do
 // Entities are an ast of code that behaves a certain way in response to input and time
 
+const MAX_SEQUENCE_CHILD_COUNT = 3;
+const MAX_SEED = Math.pow(2, 32);
+const MIN_SEED = 0;
+
+
+
 type Input = {
+  input: UserInput;
+  keys: string[];
   scenarios: Scenario[];
   actors: string[];
 };
@@ -31,10 +40,44 @@ type Output = {
   entities: {[key: string]: Entity};
 };
 
-type Entity = {
-  type: 'moveRight',
-  id: string
-};
+type UserInput = {
+  [key: number]: InputEvent[]
+}
+
+type InputEvent = {
+  type: string;
+  key: string;
+}
+
+type InputState = {
+  [key: string]: boolean;
+}
+
+type LeafCommandName = 'moveRight' | 'moveLeft' | 'moveUp' | 'moveDown';
+
+type Entity = Tree;
+
+type Tree = Branch | Leaf;
+
+type Branch = Sequence | InputConditional;
+
+type Sequence = {
+  type: 'sequence';
+  id: string;
+  children: Array<Tree>;
+}
+
+type InputConditional = {
+  type: 'inputConditional';
+  id: string;
+  children: Array<Tree>;
+  key: string;
+}
+
+type Leaf = {
+  type: LeafCommandName;
+  id: string;
+}
 
 type Scenario = {
   actors: {[key: string]: ActorFrame[]};
@@ -52,6 +95,7 @@ type ActorFrame = {
 
 type SimulationOptions = {
   frames: number;
+  postFrameCallback?: (frame: number, positions: ActorPositions) => void;
 };
 
 type ActorPositions = {
@@ -79,41 +123,108 @@ function sum (array: number[]): number {
   return array.reduce(add, 0);
 }
 
-function simulateAndFindErrorLevel (entity: Entity, frames: ActorFrame[]) {
-  const startingPosition = frames[0].position;
+function simulateAndFindErrorLevel (input: Input, entity: Entity, scenario: Scenario, actor: string) {
   const errorLevels: number[] = [];
+  const output = {
+    entities: {
+      [actor]: entity
+    }
+  }
 
-  frames.slice(1).reduce((position, frame) => {
-    const updatedPosition = executeCode(entity, position);
+  const options = {
+    frames: scenario.actors[actor].length,
 
-    errorLevels.push(distance(updatedPosition, frame.position));
+    postFrameCallback: (frame: number, positions: ActorPositions) => {
+      const expectedPosition = scenario.actors[actor][frame].position;
 
-    return updatedPosition;
-  }, startingPosition);
+      errorLevels.push(distance(expectedPosition, positions[actor]));
+    }
+  }
 
-  return sum(errorLevels);
+  const size = findSize(entity);
+
+  simulate(input, scenario, output, options);
+
+  return (sum(errorLevels) * 1000) + size;
 }
 
-function generateEntity (seed: number): Entity {
-  return {
-    type: 'moveRight',
-    id: seed.toString()
-  };
+function isLeaf (tree: Tree): tree is Leaf {
+  return !('children' in tree);
 }
+
+function findSize (tree: Tree): number {
+  if (isLeaf(tree)) {
+    return 1;
+  }
+
+  return sum(tree.children.map(findSize));
+}
+
+function fill (array: Array<any>, value: any) {
+  for (let i = 0; i < array.length; i++) {
+    array[i] = value;
+  }
+
+  return array;
+}
+
+function makeChildren (random: Random, n: number, depth: number): Entity[] {
+  return fill(new Array(n), 0).map(() =>
+    generateEntity(random.integer(MIN_SEED, MAX_SEED), depth + 1)
+  )
+}
+
+function generateEntity (seed: number, depth = 0): Entity {
+  const random = new Random(Random.engines.mt19937().seed(seed));
+
+  const isLeaf = depth > 2 || random.bool();
+
+  if (isLeaf) {
+    const possibleCommands = ['moveLeft', 'moveRight', 'moveUp', 'moveDown'];
+
+    const command = (random as any).pick(possibleCommands) as LeafCommandName;
+
+    return {
+      type: command,
+      id: seed.toString()
+    };
+  } else {
+    const possibleCommands = ['sequence', 'inputConditional'];
+    // TODO - fix definitely typed definition
+    const command = (random as any).pick(possibleCommands) as any;
+
+    if (command === 'inputConditional') {
+      return {
+        type: command,
+        id: seed.toString(),
+        children: makeChildren(random, 2, depth),
+        key: 'Right'
+      }
+    }
+
+    return {
+      type: command,
+      id: seed.toString(),
+      children: makeChildren(random, random.integer(2, MAX_SEQUENCE_CHILD_COUNT), depth)
+    }
+  }
+}
+
 
 // TODO - determinism
-function generateEntities (generationSize: number): Entity[] {
+function generateEntities (random: Random, generationSize: number): Entity[] {
   const entities = [];
 
   while (entities.length < generationSize) {
-    entities.push(generateEntity(Math.random()));
+    entities.push(generateEntity(random.integer(MIN_SEED, MAX_SEED)));
   }
 
   return entities;
 }
 
-function helixPi (input: Input): Output {
+function helixPi (input: Input, seed: number): Output {
   const generationSize = 500;
+  const random = new Random(Random.engines.mt19937().seed(seed));
   // Given an array of actor names
   // And a collection of scenarios
 
@@ -123,17 +234,19 @@ function helixPi (input: Input): Output {
     //  For each actor
     Object.keys(scenario.actors).forEach(actor => {
       //   Generate N possible entities
-      const entities = generateEntities(generationSize);
+      const entities = generateEntities(random, generationSize);
       //   Simulate them in this scenario
 
       //   Assign them each an error level based on how far they are from the desired position at each frame
       const errorLevels: EntityErrorLevels = {};
 
       entities.forEach(entity => {
-        errorLevels[entity.id] = simulateAndFindErrorLevel(entity, scenario.actors[actor]);
+        errorLevels[entity.id] = simulateAndFindErrorLevel(input, entity, scenario, actor);
       });
 
-      foo = entities[0];
+      const bestEntities = entities.sort((a, b) => errorLevels[a.id] - errorLevels[b.id]);
+
+      foo = bestEntities[0];
 
       //   Breed the best entities, selecting proportionally weighted to their error level
       //     Where breeding is defined as
@@ -180,31 +293,74 @@ function helixPi (input: Input): Output {
   };
 }
 
-function executeCode (code: Entity, position: Vector) {
+function executeCode (position: Vector, code: Entity, input: InputState): Vector {
   if (code.type === 'moveRight') {
     return {...position, x: position.x + 1};
   }
 
+  if (code.type === 'moveLeft') {
+    return {...position, x: position.x - 1};
+  }
+
+  if (code.type === 'moveUp') {
+    return {...position, y: position.y - 1};
+  }
+
+  if (code.type === 'moveDown') {
+    return {...position, y: position.y + 1};
+  }
+
+  if (code.type === 'sequence') {
+    return code.children.reduce((position, entity) => executeCode(position, entity, input), position);
+  }
+
+  if (code.type === 'inputConditional') {
+    if (input[code.key]) {
+      return executeCode(position, code.children[0], input);
+    } else {
+      return executeCode(position, code.children[1], input);
+    }
+  }
+
+
   throw new Error('Unimplemented code: ' + JSON.stringify(code, null, 2));
 }
 
-function simulate (scenario: Scenario, output: Output, options: SimulationOptions): ActorPositions {
+function simulate (input: Input, scenario: Scenario, output: Output, options: SimulationOptions): ActorPositions {
   const actors = Object.keys(scenario.actors);
 
   const positions: ActorPositions = {};
+  const inputState: InputState = {};
+
+  input.keys.forEach(key => inputState[key] = false);
 
   actors.forEach(actor => {
-    positions[actor] = scenario.actors[actor][0].position;
+    positions[actor] = {...scenario.actors[actor][0].position};
   });
 
   let frames = options.frames;
+  let currentFrame = 0;
 
-  while (frames > 0) {
-    actors.forEach(actor => {
-      positions[actor] = executeCode(output.entities[actor], positions[actor]);
+  while (currentFrame < frames) {
+    const inputEvents = input.input[currentFrame] || [];
+
+    inputEvents.forEach(event => {
+      if (event.type === 'keydown') {
+        inputState[event.key] = true;
+      } else {
+        inputState[event.key] = false;
+      }
     });
 
-    frames--;
+    if (options.postFrameCallback) {
+      options.postFrameCallback(currentFrame, positions);
+    }
+
+    actors.forEach(actor => {
+      positions[actor] = executeCode(positions[actor], output.entities[actor], inputState);
+    });
+
+    currentFrame++;
   }
 
   return positions;
@@ -218,6 +374,8 @@ describe('Helix Pi', () => {
     // check if they match the described behaviour of the actors in the scenario
     const input = {
       actors: ['keith'],
+      input: [],
+      keys: [],
 
       scenarios: [
         {
@@ -237,10 +395,192 @@ describe('Helix Pi', () => {
       ]
     };
 
-    const output = helixPi(input);
+    const seed = 42;
+    const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input.scenarios[0], output, {frames: 1});
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 1});
 
     assert.deepEqual(simulationResult['keith'], {x: 1, y: 0});
+  });
+
+  it('can go left', () => {
+    const input = {
+      actors: ['keith'],
+      input: [],
+      keys: [],
+
+      scenarios: [
+        {
+          actors: {
+            'keith': [
+              {
+                frame: 0,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 1,
+                position: {x: -1, y: 0}
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+
+    const seed = 42;
+    const output = helixPi(input, seed);
+
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 1});
+
+    assert.deepEqual(simulationResult['keith'], input.scenarios[0].actors.keith[1].position);
+  });
+
+  it('can go up and to the right', () => {
+    const input = {
+      actors: ['keith'],
+      input: [],
+      keys: [],
+
+      scenarios: [
+        {
+          actors: {
+            'keith': [
+              {
+                frame: 0,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 1,
+                position: {x: 1, y: -1}
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+
+    const seed = 42;
+    const output = helixPi(input, seed);
+
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 1});
+
+    assert.deepEqual(simulationResult['keith'], input.scenarios[0].actors.keith[1].position);
+  });
+
+  it('can go down and to the left', () => {
+    const input = {
+      actors: ['keith'],
+      input: [],
+      keys: [],
+      scenarios: [
+        {
+          actors: {
+            'keith': [
+              {
+                frame: 0,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 1,
+                position: {x: -1, y: 1}
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+
+    const seed = 42;
+    const output = helixPi(input, seed);
+
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 1});
+
+    assert.deepEqual(simulationResult['keith'], input.scenarios[0].actors.keith[1].position);
+  });
+
+  it('responds to input', () => {
+    const input = {
+      actors: ['keith'],
+      input: {
+        1: [{type: 'keydown', key: 'Right'}]
+      },
+
+      keys: [
+        'Right'
+      ],
+
+      scenarios: [
+        {
+          actors: {
+            'keith': [
+              {
+                frame: 0,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 1,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 2,
+                position: {x: 1, y: 0}
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    const seed = 42;
+    const output = helixPi(input, seed);
+
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 2});
+
+    assert.deepEqual(simulationResult['keith'], input.scenarios[0].actors.keith[2].position);
+  });
+
+  it('handles multiple scenarios', () => {
+    const input = {
+      actors: ['keith'],
+
+      input: {
+        1: [{type: 'keydown', key: 'Right'}]
+      },
+
+      keys: [
+        'Right'
+      ],
+
+      scenarios: [
+        {
+          actors: {
+            'keith': [
+              {
+                frame: 0,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 1,
+                position: {x: 0, y: 0}
+              },
+              {
+                frame: 2,
+                position: {x: 1, y: 0}
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    const seed = 42;
+    const output = helixPi(input, seed);
+
+    const simulationResult = simulate(input, input.scenarios[0], output, {frames: 2});
+
+    assert.deepEqual(simulationResult['keith'], input.scenarios[0].actors.keith[2].position);
   });
 });
