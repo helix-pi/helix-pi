@@ -10,7 +10,7 @@ Accessible game development, powered by genetic programming
 
 [Check it out.](http://www.helix-pi.net) | [Benchmarks](http://graphs.helix-pi.net/)
 
-What are you even on about bro?
+What are you even on about?
 ---
 
 Okay, so this whole project started because I was thinking about how the current models of programming make game development terribly difficult. (at least, real time, graphical game development).
