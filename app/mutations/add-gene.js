@@ -13,7 +13,7 @@ const stubApi = createApi({
 function addGene (individual) {
   const newIndividual = individual.slice();
 
-  const indexToInsertNewGene = getRandomInt(individual.length);
+  const indexToInsertNewGene = getRandomInt(0, individual.length);
 
   const newGene = Gene(stubApi);
 
