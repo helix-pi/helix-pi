@@ -25,85 +25,85 @@ const MAX_SEQUENCE_CHILD_COUNT = 3;
 const MAX_SEED = Math.pow(2, 32);
 const MIN_SEED = 0;
 
-type Input = {
+export type Input = {
   keys: string[];
   scenarios: Scenario[];
   actors: string[];
 };
 
-type Output = {
+export type Output = {
   entities: { [key: string]: Entity };
 };
 
-type UserInput = {
+export type UserInput = {
   [key: number]: InputEvent[];
 };
 
-type InputEvent = {
+export type InputEvent = {
   type: string;
   key: string;
 };
 
-type InputState = {
+export type InputState = {
   [key: string]: boolean;
 };
 
-type LeafCommandName =
+export type LeafCommandName =
   | "moveRight"
   | "moveLeft"
   | "moveUp"
   | "moveDown"
   | "noop";
 
-type Entity = Tree;
+export type Entity = Tree;
 
-type Tree = Branch | Leaf;
+export type Tree = Branch | Leaf;
 
-type Branch = Sequence | InputConditional;
+export type Branch = Sequence | InputConditional;
 
-type Sequence = {
+export type Sequence = {
   type: "sequence";
   id: string;
   children: Array<Tree>;
 };
 
-type InputConditional = {
+export type InputConditional = {
   type: "inputConditional";
   key: string;
   id: string;
   children: Array<Tree>;
 };
 
-type Leaf = {
+export type Leaf = {
   type: LeafCommandName;
   id: string;
 };
 
-type Scenario = {
+export type Scenario = {
   input: UserInput;
   actors: { [key: string]: ActorFrame[] };
 };
 
-type Vector = {
+export type Vector = {
   x: number;
   y: number;
 };
 
-type ActorFrame = {
+export type ActorFrame = {
   frame: number;
   position: Vector;
 };
 
-type SimulationOptions = {
+export type SimulationOptions = {
   frames: number;
   postFrameCallback?: (frame: number, positions: ActorPositions) => void;
 };
 
-type ActorPositions = {
+export type ActorPositions = {
   [key: string]: Vector;
 };
 
-type EntityErrorLevels = {
+export type EntityErrorLevels = {
   [key: string]: number;
 };
 

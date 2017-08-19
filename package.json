@@ -3,9 +3,8 @@
   "version": "0.0.2",
   "description": "Accessible game development, powered by genetic programming",
   "scripts": {
-    "lint": "tslint -p tsconfig.json --type-check",
-    "lint/fix": "tslint -p tsconfig.json --type-check --fix",
-    "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive && npm run lint",
+    "pretitter": "prettier **/*.ts --write",
+    "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive",
     "test/auto": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
   },
   "main": "./helix.ts",
@@ -16,8 +15,9 @@
   "devDependencies": {
     "@types/mocha": "^2.2.41",
     "@types/node": "^7.0.18",
-    "budo": "^10.0.3",
+    "budo": "^10.0.4",
     "mocha": "^3.3.0",
+    "prettier": "^1.5.3",
     "ts-node": "^3.0.4",
     "tsify": "^3.0.1",
     "tslint": "^5.2.0",
@@ -25,7 +25,11 @@
     "typescript": "^2.3.2"
   },
   "dependencies": {
+    "@cycle/dom": "^18.1.0",
+    "@cycle/run": "^3.2.0",
+    "@cycle/time": "^0.8.0",
     "@types/random-js": "^1.0.30",
-    "random-js": "^1.0.8"
+    "random-js": "^1.0.8",
+    "xstream": "^10.9.0"
   }
 }
