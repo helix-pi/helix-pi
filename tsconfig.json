@@ -3,6 +3,7 @@
     "target": "es5",
     "outDir": "dist/",
     "module": "commonjs",
+    "lib": ["DOM", "ES6"],
     "declaration": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
