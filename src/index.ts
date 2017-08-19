@@ -1,4 +1,4 @@
-import * as Random from 'random-js';
+import * as Random from "random-js";
 // What was wrong with the historic helix pi codebase?
 //
 // It was nondeterministic, tests would occasionally fail.
@@ -32,11 +32,11 @@ type Input = {
 };
 
 type Output = {
-  entities: {[key: string]: Entity};
+  entities: { [key: string]: Entity };
 };
 
 type UserInput = {
-  [key: number]: InputEvent[]
+  [key: number]: InputEvent[];
 };
 
 type InputEvent = {
@@ -48,7 +48,12 @@ type InputState = {
   [key: string]: boolean;
 };
 
-type LeafCommandName = 'moveRight' | 'moveLeft' | 'moveUp' | 'moveDown' | 'noop';
+type LeafCommandName =
+  | "moveRight"
+  | "moveLeft"
+  | "moveUp"
+  | "moveDown"
+  | "noop";
 
 type Entity = Tree;
 
@@ -57,13 +62,13 @@ type Tree = Branch | Leaf;
 type Branch = Sequence | InputConditional;
 
 type Sequence = {
-  type: 'sequence';
+  type: "sequence";
   id: string;
   children: Array<Tree>;
 };
 
 type InputConditional = {
-  type: 'inputConditional';
+  type: "inputConditional";
   key: string;
   id: string;
   children: Array<Tree>;
@@ -76,7 +81,7 @@ type Leaf = {
 
 type Scenario = {
   input: UserInput;
-  actors: {[key: string]: ActorFrame[]};
+  actors: { [key: string]: ActorFrame[] };
 };
 
 type Vector = {
@@ -102,24 +107,24 @@ type EntityErrorLevels = {
   [key: string]: number;
 };
 
-function distance (a: Vector, b: Vector): number {
-  return Math.abs(
-    Math.sqrt(
-      Math.pow(a.x - b.x, 2) +
-      Math.pow(a.y - b.y, 2)
-    )
-  );
+function distance(a: Vector, b: Vector): number {
+  return Math.abs(Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)));
 }
 
-function add (a: number, b: number): number {
+function add(a: number, b: number): number {
   return a + b;
 }
 
-function sum (array: number[]): number {
+function sum(array: number[]): number {
   return array.reduce(add, 0);
 }
 
-function simulateAndFindErrorLevel (input: Input, entity: Entity, scenario: Scenario, actor: string) {
+function simulateAndFindErrorLevel(
+  input: Input,
+  entity: Entity,
+  scenario: Scenario,
+  actor: string
+) {
   const errorLevels: number[] = [];
   const output = {
     entities: {
@@ -141,14 +146,14 @@ function simulateAndFindErrorLevel (input: Input, entity: Entity, scenario: Scen
 
   simulate(input, scenario, output, options);
 
-  return (sum(errorLevels) * 1000) + size;
+  return sum(errorLevels) * 1000 + size;
 }
 
-function isLeaf (tree: Tree): tree is Leaf {
-  return !('children' in tree);
+function isLeaf(tree: Tree): tree is Leaf {
+  return !("children" in tree);
 }
 
-function findSize (tree: Tree): number {
+function findSize(tree: Tree): number {
   if (isLeaf(tree)) {
     return 1;
   }
@@ -156,7 +161,7 @@ function findSize (tree: Tree): number {
   return sum(tree.children.map(findSize));
 }
 
-function makeArray<T> (n: number, f: () => T): Array<T> {
+function makeArray<T>(n: number, f: () => T): Array<T> {
   const array: Array<T> = [];
 
   while (n > 0) {
@@ -168,19 +173,25 @@ function makeArray<T> (n: number, f: () => T): Array<T> {
   return array;
 }
 
-function makeChildren (random: Random, n: number, depth: number): Entity[] {
+function makeChildren(random: Random, n: number, depth: number): Entity[] {
   return makeArray(n, () =>
     generateEntity(random.integer(MIN_SEED, MAX_SEED), depth + 1)
   );
 }
 
-function generateEntity (seed: number, depth = 0): Entity {
+function generateEntity(seed: number, depth = 0): Entity {
   const random = new Random(Random.engines.mt19937().seed(seed));
 
   const isLeaf = depth > 2 || random.bool();
 
   if (isLeaf) {
-    const possibleCommands = ['moveLeft', 'moveRight', 'moveUp', 'moveDown', 'noop'];
+    const possibleCommands = [
+      "moveLeft",
+      "moveRight",
+      "moveUp",
+      "moveDown",
+      "noop"
+    ];
 
     const command = (random as any).pick(possibleCommands) as LeafCommandName;
 
@@ -189,12 +200,12 @@ function generateEntity (seed: number, depth = 0): Entity {
       id: seed.toString()
     };
   } else {
-    const possibleCommands = ['sequence', 'inputConditional'];
+    const possibleCommands = ["sequence", "inputConditional"];
     // TODO - fix definitely typed definition
     const command = (random as any).pick(possibleCommands) as any;
 
-    if (command === 'inputConditional') {
-      const key = (random as any).pick(['Left', 'Right']);
+    if (command === "inputConditional") {
+      const key = (random as any).pick(["Left", "Right"]);
 
       return {
         type: command,
@@ -207,13 +218,17 @@ function generateEntity (seed: number, depth = 0): Entity {
     return {
       type: command,
       id: seed.toString(),
-      children: makeChildren(random, random.integer(2, MAX_SEQUENCE_CHILD_COUNT), depth)
+      children: makeChildren(
+        random,
+        random.integer(2, MAX_SEQUENCE_CHILD_COUNT),
+        depth
+      )
     };
   }
 }
 
 // TODO - determinism
-function generateEntities (random: Random, generationSize: number): Entity[] {
+function generateEntities(random: Random, generationSize: number): Entity[] {
   const entities = [];
 
   while (entities.length < generationSize) {
@@ -223,10 +238,10 @@ function generateEntities (random: Random, generationSize: number): Entity[] {
   return entities;
 }
 
-type BestFitness = {[key: string]: number};
-type BestEntities = {[key: string]: {[key2: string]: Entity[]}};
+type BestFitness = { [key: string]: number };
+type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
 
-export function helixPi (input: Input, seed: number): Output {
+export function helixPi(input: Input, seed: number): Output {
   const generationSize = 500;
   const generationCount = 3000000;
   const random = new Random(Random.engines.mt19937().seed(seed));
@@ -241,14 +256,13 @@ export function helixPi (input: Input, seed: number): Output {
   let generation = 0;
   let bestFitness: BestFitness = {};
 
-  function highestFitness (bestFitness: BestFitness): number {
+  function highestFitness(bestFitness: BestFitness): number {
     if (Object.keys(bestFitness).length === 0) {
       return Infinity;
     }
 
     return Math.max(...Object.keys(bestFitness).map(key => bestFitness[key]));
   }
-
 
   while (generation < generationCount && highestFitness(bestFitness) > 100) {
     // For each scenario
@@ -263,17 +277,27 @@ export function helixPi (input: Input, seed: number): Output {
         const errorLevels: EntityErrorLevels = {};
 
         for (let entity of entities) {
-          errorLevels[entity.id] = simulateAndFindErrorLevel(input, entity, scenario, actor);
-        };
+          errorLevels[entity.id] = simulateAndFindErrorLevel(
+            input,
+            entity,
+            scenario,
+            actor
+          );
+        }
 
-        const bestEntities = entities.sort((a, b) => errorLevels[a.id] - errorLevels[b.id]);
+        const bestEntities = entities.sort(
+          (a, b) => errorLevels[a.id] - errorLevels[b.id]
+        );
         const bestFitnessInGeneration = errorLevels[bestEntities[0].id];
 
-        bestFitness[index] = Math.min(bestFitness[index] || Infinity, bestFitnessInGeneration);
+        bestFitness[index] = Math.min(
+          bestFitness[index] || Infinity,
+          bestFitnessInGeneration
+        );
 
         allBestEntities[actor][index] = allBestEntities[actor][index] || [];
 
-         allBestEntities[actor][index].push(...bestEntities.slice(0, 2));
+        allBestEntities[actor][index].push(...bestEntities.slice(0, 2));
 
         //   Breed the best entities, selecting proportionally weighted to their error level
         //     Where breeding is defined as
@@ -289,7 +313,7 @@ export function helixPi (input: Input, seed: number): Output {
         //   Repeat until an entity with a near zero error level is found
         //       or until we hit a maximum number of generations
         //
-      };
+      }
     });
 
     generation++;
@@ -322,47 +346,56 @@ export function helixPi (input: Input, seed: number): Output {
   const superBestEntities = allBestEntities.sort((a, b) => errorLevels[a.id] - errorLevels[b.id]);
    */
 
-  const bestEntities = Object.keys(allBestEntities.keith).map(key => allBestEntities.keith[key][1]);
+  const bestEntities = Object.keys(allBestEntities.keith).map(
+    key => allBestEntities.keith[key][1]
+  );
 
   const entity = {
-    type: 'sequence',
-    id: 'nah',
+    type: "sequence",
+    id: "nah",
     children: bestEntities
   } as Branch;
 
   return {
     entities: {
-      'keith': entity
+      keith: entity
     }
   };
 }
 
-function executeCode (position: Vector, code: Entity, input: InputState): Vector {
-  if (code.type === 'moveRight') {
-    return {...position, x: position.x + 1};
+function executeCode(
+  position: Vector,
+  code: Entity,
+  input: InputState
+): Vector {
+  if (code.type === "moveRight") {
+    return { ...position, x: position.x + 1 };
   }
 
-  if (code.type === 'moveLeft') {
-    return {...position, x: position.x - 1};
+  if (code.type === "moveLeft") {
+    return { ...position, x: position.x - 1 };
   }
 
-  if (code.type === 'moveUp') {
-    return {...position, y: position.y - 1};
+  if (code.type === "moveUp") {
+    return { ...position, y: position.y - 1 };
   }
 
-  if (code.type === 'moveDown') {
-    return {...position, y: position.y + 1};
+  if (code.type === "moveDown") {
+    return { ...position, y: position.y + 1 };
   }
 
-  if (code.type === 'sequence') {
-    return code.children.reduce((position, entity) => executeCode(position, entity, input), position);
+  if (code.type === "sequence") {
+    return code.children.reduce(
+      (position, entity) => executeCode(position, entity, input),
+      position
+    );
   }
 
-  if (code.type === 'noop') {
+  if (code.type === "noop") {
     return position;
   }
 
-  if (code.type === 'inputConditional') {
+  if (code.type === "inputConditional") {
     if (input[code.key]) {
       return executeCode(position, code.children[0], input);
     } else {
@@ -370,19 +403,24 @@ function executeCode (position: Vector, code: Entity, input: InputState): Vector
     }
   }
 
-  throw new Error('Unimplemented code: ' + JSON.stringify(code, null, 2));
+  throw new Error("Unimplemented code: " + JSON.stringify(code, null, 2));
 }
 
-export function simulate (input: Input, scenario: Scenario, output: Output, options: SimulationOptions): ActorPositions {
+export function simulate(
+  input: Input,
+  scenario: Scenario,
+  output: Output,
+  options: SimulationOptions
+): ActorPositions {
   const actors = Object.keys(scenario.actors);
 
   const positions: ActorPositions = {};
   const inputState: InputState = {};
 
-  input.keys.forEach(key => inputState[key] = false);
+  input.keys.forEach(key => (inputState[key] = false));
 
   actors.forEach(actor => {
-    positions[actor] = {...scenario.actors[actor][0].position};
+    positions[actor] = { ...scenario.actors[actor][0].position };
   });
 
   let frames = options.frames;
@@ -392,7 +430,7 @@ export function simulate (input: Input, scenario: Scenario, output: Output, opti
     const inputEvents = scenario.input[currentFrame] || [];
 
     inputEvents.forEach(event => {
-      if (event.type === 'keydown') {
+      if (event.type === "keydown") {
         inputState[event.key] = true;
       } else {
         inputState[event.key] = false;
@@ -404,7 +442,11 @@ export function simulate (input: Input, scenario: Scenario, output: Output, opti
     }
 
     actors.forEach(actor => {
-      positions[actor] = executeCode(positions[actor], output.entities[actor], inputState);
+      positions[actor] = executeCode(
+        positions[actor],
+        output.entities[actor],
+        inputState
+      );
     });
 
     currentFrame++;
