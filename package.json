@@ -25,6 +25,7 @@
     "typescript": "^2.3.2"
   },
   "dependencies": {
+    "@types/random-js": "^1.0.30",
     "random-js": "^1.0.8"
   }
 }
