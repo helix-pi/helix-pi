@@ -47,7 +47,6 @@ interface ISources {
   Time: TimeSource;
   Router: RouterSource;
   DB: any;
-  ID: IDSource;
   id?: string;
 }
 
@@ -193,9 +192,9 @@ function renderActorButton(actor: Actor): VNode {
   ]);
 }
 
-function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
+function renderScenario(project: Project, scenario: Scenario, scenarioNameVtree: VNode): VNode {
   scenario;
-  const lines = new Array(Math.ceil(800 / 48)).fill(0);
+  const lines = new Array(Math.ceil(800 / 50)).fill(0);
 
   return div(".scenario", [
     div(".scenario-name", [scenarioNameVtree]),
@@ -205,9 +204,9 @@ function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
         h("line", {
           attrs: {
             x1: 0,
-            y1: index * 48,
+            y1: index * 50,
             x2: 800,
-            y2: index * 48,
+            y2: index * 50,
             stroke: "#333"
           }
         })
@@ -216,23 +215,30 @@ function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
       ...lines.map((_, index) =>
         h("line", {
           attrs: {
-            x1: index * 48,
+            x1: index * 50,
             y1: 0,
-            x2: index * 48,
+            x2: index * 50,
             y2: 600,
             stroke: "#333"
           }
         })
-      )
+      ),
+
+      ...Object.keys(scenario.actors).map(id => {
+        const actor = project.actors.find(actor => actor.id === id) as Actor;
+        const frame = (scenario.actors[id] as any)[0];
+
+        return renderActor(actor, frame.position.x, frame.position.y);
+      })
     ])
   ]);
 }
 
-function renderActor(actor: Actor): VNode {
+function renderActor(actor: Actor, x: number, y: number): VNode {
   return h("rect", {
     attrs: {
-      x: 0 - actor.width / 2,
-      y: 0 - actor.height / 2,
+      x: x - actor.width / 2,
+      y: y - actor.height / 2,
       height: actor.height,
       width: actor.width,
       fill: actor.color
@@ -256,6 +262,7 @@ interface IActorPanelSources extends ISources {
 
 interface IActorPanelSinks extends ISinks {
   actorChange$: Stream<Partial<Actor>>;
+  addActorToScenario$: Stream<any>;
 }
 
 function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
@@ -287,6 +294,10 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
     .map(ev => (ev.target as any).value)
     .map(color => ({ color }));
 
+  const addActorToScenario$ = sources.DOM
+    .select('.add-to-scenario')
+    .events('click');
+
   function view([actor, nameVtree]: [Actor, VNode]): VNode {
     return div(".actor-panel.flex-column", [
       nameVtree,
@@ -306,10 +317,10 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
           attrs: { width: "100%", height: 300, viewBox: `-150 -150 300 300` },
           style: { background: "#222" }
         },
-        [renderActor(actor)]
+        [renderActor(actor, 0, 0)]
       ),
 
-      button(".add-to-scene", "Add to scene")
+      button(".add-to-scenario", "Add to scenario")
     ]);
   }
 
@@ -321,7 +332,9 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
       widthChange$,
       heightChange$,
       colorChange$
-    )
+    ),
+
+    addActorToScenario$
   };
 }
 
@@ -430,6 +443,23 @@ function Project(sources: ISources): ISinks {
 
   const actorPanel = isolate(ActorPanel)({ ...sources, actor$: activeActor$ });
 
+  const addActorToScenario$ = actorPanel.addActorToScenario$.map(() =>
+    function (project: Project): Project {
+      const actor = selectedActor(project) as Actor;
+
+      return {
+        ...project,
+
+          scenarios: project.scenarios.map(
+            (scenario: Scenario) =>
+              scenario.id === project.selectedScenarioId
+                ? { ...scenario, actors: {...scenario.actors, [actor.id]: [{frame: 0, position: {x: 100, y: 100}}]}}
+                : scenario
+          )
+      }
+    }
+  );
+
   const changeActorName$ = actorPanel.actorChange$.map(
     (change: Partial<Actor>) => {
       return function(project: Project): Project {
@@ -453,7 +483,8 @@ function Project(sources: ISources): ISinks {
     changeScenarioName$,
     addActor$,
     selectActor$,
-    changeActorName$
+    changeActorName$,
+    addActorToScenario$
   );
 
   const update$ = project$
@@ -495,6 +526,7 @@ function Project(sources: ISources): ISinks {
             div(".preview", [
               project.selectedScenarioId
                 ? renderScenario(
+                    project,
                     activeScenario(project) as Scenario,
                     scenarioNameVtree
                   )
@@ -580,19 +612,10 @@ const mainWithRouter = routerify(main, switchPath, {
   routerName: "Router"
 });
 
-type IDSource = () => number;
-
-function idDriver(): IDSource {
-  let _id = 0;
-
-  return () => _id++;
-}
-
 const drivers = {
   DOM: makeDOMDriver(document.body),
   Time: timeDriver,
   History: makeHistoryDriver(),
-  ID: idDriver,
   DB: makeIDBDriver("helix-pi", 1, (upgradeDb: any) => {
     const projectsStore = upgradeDb.createObjectStore("projects", {
       keyPath: "id"
