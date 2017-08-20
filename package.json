@@ -3,7 +3,7 @@
   "version": "0.0.2",
   "description": "Accessible game development, powered by genetic programming",
   "scripts": {
-    "start": "budo src/editor.ts --css styles.css --live -- -p tsify",
+    "start": "budo src/editor.ts --css styles.css --live --pushstate --base / -- -p tsify",
     "pretitter": "prettier **/*.ts --write",
     "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive",
     "test/auto": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
@@ -14,6 +14,7 @@
     "url": "git://github.com/widdershin/helix-pi.git"
   },
   "devDependencies": {
+    "@types/history": "^4.6.0",
     "@types/mocha": "^2.2.41",
     "@types/node": "^7.0.18",
     "budo": "^10.0.4",
@@ -25,10 +26,13 @@
   },
   "dependencies": {
     "@cycle/dom": "^18.1.0",
+    "@cycle/history": "^6.4.0",
     "@cycle/run": "^3.2.0",
     "@cycle/time": "^0.8.0",
     "@types/random-js": "^1.0.30",
+    "cyclic-router": "^5.1.2",
     "random-js": "^1.0.8",
+    "switch-path": "^1.2.0",
     "xstream": "^10.9.0"
   }
 }
