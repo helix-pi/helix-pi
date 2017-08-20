@@ -198,9 +198,7 @@ function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
   const lines = new Array(Math.ceil(800 / 48)).fill(0);
 
   return div(".scenario", [
-    div('.scenario-name', [
-      scenarioNameVtree
-    ]),
+    div(".scenario-name", [scenarioNameVtree]),
 
     h("svg", { attrs: { width: 800, height: 600 } }, [
       ...lines.map((_, index) =>
@@ -305,7 +303,7 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
       h(
         "svg",
         {
-          attrs: { width: '100%', height: 300, viewBox: `-150 -150 300 300` },
+          attrs: { width: "100%", height: 300, viewBox: `-150 -150 300 300` },
           style: { background: "#222" }
         },
         [renderActor(actor)]
@@ -330,9 +328,7 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
 function Project(sources: ISources): ISinks {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
-  const project$ = projectResult$.filter(Boolean).debug("project$") as Stream<
-    Project
-  >;
+  const project$ = projectResult$.filter(Boolean) as Stream<Project>;
 
   const initialPersistence$ = projectResult$
     .filter((project: Project | undefined) => project === undefined)
