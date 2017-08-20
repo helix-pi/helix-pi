@@ -1,5 +1,17 @@
-import { makeDOMDriver, h1, h2, div, a, DOMSource, VNode } from "@cycle/dom";
+import {
+  makeDOMDriver,
+  h1,
+  h2,
+  span,
+  div,
+  input,
+  a,
+  button,
+  DOMSource,
+  VNode
+} from "@cycle/dom";
 import { makeHistoryDriver } from "@cycle/history";
+import makeIDBDriver, { $add, $update } from "cycle-idb";
 import { timeDriver, TimeSource } from "@cycle/time";
 import { run } from "@cycle/run";
 import { routerify, RouterSource, RouterSink } from "cyclic-router";
@@ -10,6 +22,7 @@ interface ISources {
   DOM: DOMSource;
   Time: TimeSource;
   Router: RouterSource;
+  DB: any;
   ID: IDSource;
   id?: string;
 }
@@ -17,9 +30,10 @@ interface ISources {
 interface ISinks {
   DOM: Stream<VNode>;
   Router?: RouterSink;
+  DB?: any;
 }
 
-function initialView(): VNode {
+function homeView(projects: any[]): VNode {
   return div(".welcome", [
     h1("Helix Pi"),
 
@@ -28,23 +42,136 @@ function initialView(): VNode {
 
       div(".recent-projects", [
         h2("Recent projects"),
-        div("TODO"),
-        div("Implement this")
+
+        div(
+          ".projects.flex-column",
+          projects.map((project: any) =>
+            a(
+              ".goto-project",
+              { attrs: { href: `/project/${project.name}` } },
+              project.name
+            )
+          )
+        )
       ])
     ])
   ]);
 }
 
-function Home(): ISinks {
+function Home(sources: ISources): ISinks {
+  const projects$ = sources.DB.store("projects").getAll();
+
   return {
-    DOM: xs.of(initialView())
+    DOM: projects$.map(homeView)
+  };
+}
+
+interface IProjectNameSources extends ISources {
+  name$: Stream<string>;
+}
+
+interface IProjectNameSinks extends ISinks {
+  name$: Stream<string>;
+  nameChange$: Stream<string>;
+}
+
+function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
+  const name$ = sources.name$;
+
+  const startEditing$ = sources.DOM
+    .select(".edit-project-name")
+    .events("click")
+    .mapTo(true);
+
+  const save$ = sources.DOM
+    .select(".save-project-name")
+    .events("click")
+    .mapTo(false);
+
+  const cancelEditing$ = sources.DOM
+    .select(".cancel-editing-project-name")
+    .events("click")
+    .mapTo(false);
+
+  const editing$ = xs.merge(xs.of(false), startEditing$, save$, cancelEditing$);
+
+  const newName$ = sources.DOM
+    .select(".project-name-input")
+    .events("input")
+    .map((ev: any) => ev.currentTarget.value);
+
+  const nameChange$ = newName$.map(name => save$.mapTo(name)).flatten();
+
+  function view([name, editing]: [string, boolean]): VNode {
+    if (editing) {
+      return div(".project-name-container", [
+        div([
+          input(".project-name-input", { props: { value: name } }),
+          a(".save-project-name", " ✓ "),
+          a(".cancel-editing-project-name", " ✖ ")
+        ])
+      ]);
+    }
+
+    return div(".project-name-container", [
+      div([span(".project-name", `${name}`), a(".edit-project-name", " ✎ ")])
+    ]);
+  }
+
+  return {
+    DOM: xs.combine(name$, editing$).map(view),
+
+    name$: xs.merge(name$, nameChange$),
+
+    nameChange$
   };
 }
 
 function Project(sources: ISources): ISinks {
-  sources;
+  const projectResult$ = sources.DB.store("projects").get(sources.id);
+
+  const project$ = projectResult$.filter(Boolean).debug("projects");
+
+  const initialPersistence$ = projectResult$
+    .filter((project: any) => project === undefined)
+    .mapTo($add("projects", { name: sources.id, scenarios: [] }));
+
+  const nameComponent = ProjectName({
+    ...sources,
+    name$: project$.map((project: any) => project.name)
+  });
+
+  const changeName$ = nameComponent.nameChange$.map(name => (project: any): any => ({
+    ...project,
+    name
+  }));
+
+  const reducer$ = xs.merge(
+    project$.take(1).map((project: any) => () => project),
+    changeName$
+  );
+
+  const update$ = reducer$
+    .fold((project: any, reducer: any) => reducer(project), null)
+    .drop(2)
+    .map(project => $update("projects", project));
+
   return {
-    DOM: xs.of(div(".project", [div(`Project: ${sources.id}`)]))
+    DOM: xs
+      .combine(project$, nameComponent.DOM)
+      .map(([project, nameVtree]: [any, VNode]) =>
+        div(".project", [
+          div(".sidebar.flex-column", [
+            nameVtree,
+            'Scenarios',
+            div(".scenarios", project.scenarios.map(JSON.stringify)),
+            button(".add-scenario", "Add scenario")
+          ]),
+          div(".preview", ["No scenario selected"])
+        ])
+      ),
+
+    DB: xs.merge(initialPersistence$, update$)
   };
 }
 
@@ -54,19 +181,35 @@ type RouterMatch = {
   value: Component;
 };
 
-function extendSources (component: any, additionalSources: object) {
-  return (sources: object) => component({...sources, ...additionalSources});
+function extendSources(component: any, additionalSources: object) {
+  return (sources: object) => component({ ...sources, ...additionalSources });
+}
+
+function view(child: VNode): VNode {
+  return div(".helix-pi", [
+    div(".nav-bar", ["Helix Pi", " - ", a(".home", "Home")]),
+    child
+  ]);
 }
 
 function main(sources: ISources): ISinks {
   sources;
   const page$ = sources.Router.define({
     "/": Home,
-    "/project/:id": (id: string) => extendSources(Project, {id})
+    "/project/:id": (id: string) => extendSources(Project, { id })
   });
 
   const newProject$ = sources.DOM
     .select(".new-project")
+    .events("click", { preventDefault: true });
+
+  const gotoProject$ = sources.DOM
+    .select(".goto-project")
+    .events("click", { preventDefault: true })
+    .map((ev: MouseEvent) => (ev.target as any).pathname);
+
+  const home$ = sources.DOM
+    .select(".home")
     .events("click", { preventDefault: true });
 
   const component$ = page$.map((result: RouterMatch) => {
@@ -81,10 +224,18 @@ function main(sources: ISources): ISinks {
     return component(componentSources);
   });
 
-  return {
-    DOM: component$.map((c: ISinks) => c.DOM).flatten(),
+  const componentVtree$ = component$.map((c: ISinks) => c.DOM).flatten();
 
-    Router: xs.merge(newProject$.map(() => `/project/untitled-${sources.ID()}`))
+  return {
+    DOM: componentVtree$.map(view),
+
+    DB: component$.map((c: ISinks) => c.DB || xs.empty()).flatten(),
+
+    Router: xs.merge(
+      home$.mapTo(`/`),
+      newProject$.mapTo(`/project/untitled-${sources.ID()}`),
+      gotoProject$
+    )
   };
 }
 
@@ -105,7 +256,13 @@ const drivers = {
   DOM: makeDOMDriver(document.body),
   Time: timeDriver,
   History: makeHistoryDriver(),
-  ID: idDriver
+  ID: idDriver,
+  DB: makeIDBDriver("helix-pi", 1, (upgradeDb: any) => {
+    const projectsStore = upgradeDb.createObjectStore("projects", {
+      keyPath: "name"
+    });
+    projectsStore.createIndex("name", "name");
+  })
 };
 
 run(mainWithRouter, drivers);

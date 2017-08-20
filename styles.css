@@ -7,6 +7,10 @@ html, body {
   color: #EEE;
 }
 
+.helix-pi {
+  height: 100%;
+}
+
 .welcome {
   width: 100%;
   height: 100%;
@@ -18,6 +22,11 @@ html, body {
 
   text-align: center;
   font-size: 2em;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
 }
 
 .options {
@@ -33,3 +42,22 @@ a:hover {
   color: yellow;
 }
 
+.nav-bar {
+  background: #222;
+}
+
+.project {
+  display: flex;
+  height: 100%;
+}
+
+.project .sidebar {
+  background: #333;
+  height: 100%;
+  padding: 10px;
+  margin-right: 10px;
+}
+
+.project-name {
+  font-size: 1.3em;
+}
