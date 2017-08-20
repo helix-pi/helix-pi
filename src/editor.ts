@@ -16,13 +16,15 @@ import { timeDriver, TimeSource } from "@cycle/time";
 import { run } from "@cycle/run";
 import { routerify, RouterSource, RouterSink } from "cyclic-router";
 import switchPath from "switch-path";
+import * as uuid from "uuid";
 import xs, { Stream } from "xstream";
 
-import { Scenario } from './index';
+import { Scenario } from "./index";
 
 interface Project {
   id: string;
   name: string;
+  selectedScenarioId: null | string;
 
   scenarios: Scenario[];
 }
@@ -54,7 +56,7 @@ function homeView(projects: Project[]): VNode {
 
         div(
           ".projects.flex-column",
-          projects.map((project) =>
+          projects.map(project =>
             a(
               ".goto-project",
               { attrs: { href: `/project/${project.id}` } },
@@ -85,8 +87,6 @@ interface IProjectNameSinks extends ISinks {
 }
 
 function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
-  const name$ = sources.name$;
-
   const startEditing$ = sources.DOM
     .select(".edit-project-name")
     .events("click")
@@ -128,12 +128,27 @@ function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
   }
 
   return {
-    DOM: xs.combine(name$, editing$).map(view),
+    DOM: xs.combine(sources.name$, editing$).map(view),
 
-    name$: xs.merge(name$, nameChange$),
+    name$: xs.merge(sources.name$, nameChange$),
 
     nameChange$
   };
+}
+
+function makeScenario(): Scenario {
+  return {
+    name: "Untitled scenario",
+    input: {},
+    actors: {},
+    id: uuid.v4()
+  };
+}
+
+function renderScenarioButton(scenario: Scenario): VNode {
+  return div(".scenario-button", [
+    a(".select-scenario", { attrs: { "data-id": scenario.id } }, scenario.name)
+  ]);
 }
 
 function Project(sources: ISources): ISinks {
@@ -143,26 +158,57 @@ function Project(sources: ISources): ISinks {
 
   const initialPersistence$ = projectResult$
     .filter((project: Project | undefined) => project === undefined)
-    .mapTo($add("projects", { id: sources.id, name: 'Untitled', scenarios: [] }));
+    .mapTo(
+      $add("projects", { id: sources.id, name: "Untitled", scenarios: [] })
+    );
 
   const nameComponent = ProjectName({
     ...sources,
     name$: project$.map((project: any) => project.name)
   });
 
-  const changeName$ = nameComponent.nameChange$.map(name => (project: any): any => ({
-    ...project,
-    name
-  }));
+  const changeName$ = nameComponent.nameChange$.map(
+    name => (project: any): any => ({
+      ...project,
+      name
+    })
+  );
+
+  const addScenario$ = sources.DOM
+    .select(".add-scenario")
+    .events("click")
+    .map(() => (project: Project): Project => {
+      const scenario = makeScenario();
+      return {
+        ...project,
+
+        selectedScenarioId: scenario.id,
+
+        scenarios: project.scenarios.concat(scenario)
+      };
+    });
+
+  const selectScenario$ = sources.DOM
+    .select('.select-scenario')
+  .events('click')
+  .map(ev => (project: Project): Project => {
+    return {
+      ...project,
+
+      selectedScenarioId: (ev.currentTarget as any).dataset.id
+    }
+  });
 
   const reducer$ = xs.merge(
     project$.take(1).map((project: any) => () => project),
-    changeName$
+    changeName$,
+    addScenario$,
+    selectScenario$
   );
 
   const update$ = reducer$
     .fold((project: any, reducer: any) => reducer(project), null)
-    .drop(2)
+    .drop(1)
     .map(project => $update("projects", project));
 
   return {
@@ -172,11 +218,13 @@ function Project(sources: ISources): ISinks {
         div(".project", [
           div(".sidebar.flex-column", [
             nameVtree,
-            'Scenarios',
-            div(".scenarios", project.scenarios.map(JSON.stringify)),
+            "Scenarios",
+            div(".scenarios", project.scenarios.map(renderScenarioButton)),
             button(".add-scenario", "Add scenario")
           ]),
-          div(".preview", ["No scenario selected"])
+          div(".preview", [
+            project.selectedScenarioId || "No scenario selected"
+          ])
         ])
       ),
 
@@ -202,7 +250,6 @@ function view(child: VNode): VNode {
 }
 
 function main(sources: ISources): ISinks {
-  sources;
   const page$ = sources.Router.define({
     "/": Home,
     "/project/:id": (id: string) => extendSources(Project, { id })
