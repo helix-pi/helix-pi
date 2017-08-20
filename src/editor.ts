@@ -18,6 +18,15 @@ import { routerify, RouterSource, RouterSink } from "cyclic-router";
 import switchPath from "switch-path";
 import xs, { Stream } from "xstream";
 
+import { Scenario } from './index';
+
+interface Project {
+  id: string;
+  name: string;
+
+  scenarios: Scenario[];
+}
+
 interface ISources {
   DOM: DOMSource;
   Time: TimeSource;
@@ -33,7 +42,7 @@ interface ISinks {
   DB?: any;
 }
 
-function homeView(projects: any[]): VNode {
+function homeView(projects: Project[]): VNode {
   return div(".welcome", [
     h1("Helix Pi"),
 
@@ -45,10 +54,10 @@ function homeView(projects: any[]): VNode {
 
         div(
           ".projects.flex-column",
-          projects.map((project: any) =>
+          projects.map((project) =>
             a(
               ".goto-project",
-              { attrs: { href: `/project/${project.name}` } },
+              { attrs: { href: `/project/${project.id}` } },
               project.name
             )
           )
@@ -130,11 +139,11 @@ function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
 function Project(sources: ISources): ISinks {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
-  const project$ = projectResult$.filter(Boolean).debug("projects");
+  const project$ = projectResult$.filter(Boolean) as Stream<Project>;
 
   const initialPersistence$ = projectResult$
-    .filter((project: any) => project === undefined)
-    .mapTo($add("projects", { name: sources.id, scenarios: [] }));
+    .filter((project: Project | undefined) => project === undefined)
+    .mapTo($add("projects", { id: sources.id, name: 'Untitled', scenarios: [] }));
 
   const nameComponent = ProjectName({
     ...sources,
@@ -233,7 +242,7 @@ function main(sources: ISources): ISinks {
 
     Router: xs.merge(
       home$.mapTo(`/`),
-      newProject$.mapTo(`/project/untitled-${sources.ID()}`),
+      newProject$.mapTo(`/project/${sources.ID()}`),
       gotoProject$
     )
   };
@@ -259,9 +268,9 @@ const drivers = {
   ID: idDriver,
   DB: makeIDBDriver("helix-pi", 1, (upgradeDb: any) => {
     const projectsStore = upgradeDb.createObjectStore("projects", {
-      keyPath: "name"
+      keyPath: "id"
     });
-    projectsStore.createIndex("name", "name");
+    projectsStore.createIndex("id", "id");
   })
 };
 
