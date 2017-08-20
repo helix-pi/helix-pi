@@ -48,10 +48,12 @@ a:hover {
 
 .project {
   display: flex;
+  justify-content: space-between;
   height: 100%;
 }
 
 .project .sidebar {
+  flex-grow: 1;
   background: #333;
   height: 100%;
   padding: 10px;
@@ -59,4 +61,29 @@ a:hover {
 
 .project-name {
   font-size: 1.3em;
+}
+
+.sidebar-title {
+  font-size: 1.1em;
+  padding: 15px 0px 1px 0px;
+}
+
+.sidebar button {
+  margin: 3px 0px;
+}
+
+.scenario {
+  margin: 15px;
+}
+
+.scenario svg {
+  border: 1px solid #888;
+}
+
+.scenario-name {
+  height: 40px;
+}
+
+input, button {
+  font-size: 1em;
 }

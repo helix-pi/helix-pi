@@ -27,8 +27,19 @@ interface Project {
   id: string;
   name: string;
   selectedScenarioId: null | string;
+  selectedActorId: null | string;
 
   scenarios: Scenario[];
+  actors: Actor[];
+}
+
+interface Actor {
+  id: string;
+  name: string;
+
+  width: number;
+  height: number;
+  color: string;
 }
 
 interface ISources {
@@ -138,6 +149,16 @@ function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
   };
 }
 
+function makeActor(): Actor {
+  return {
+    id: uuid.v4(),
+    name: "Untitled actor",
+    width: 100,
+    height: 100,
+    color: "white"
+  };
+}
+
 function makeScenario(): Scenario {
   return {
     name: "Untitled scenario",
@@ -147,9 +168,28 @@ function makeScenario(): Scenario {
   };
 }
 
+function makeProject(id: string): Project {
+  const scenario = makeScenario();
+
+  return {
+    id,
+    name: "Untitled",
+    scenarios: [scenario],
+    actors: [],
+    selectedScenarioId: scenario.id,
+    selectedActorId: null
+  };
+}
+
 function renderScenarioButton(scenario: Scenario): VNode {
   return div(".scenario-button", [
     a(".select-scenario", { attrs: { "data-id": scenario.id } }, scenario.name)
+  ]);
+}
+
+function renderActorButton(actor: Actor): VNode {
+  return div(".actor-button", [
+    a(".select-actor", { attrs: { "data-id": actor.id } }, actor.name)
   ]);
 }
 
@@ -158,7 +198,9 @@ function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
   const lines = new Array(Math.ceil(800 / 48)).fill(0);
 
   return div(".scenario", [
-    scenarioNameVtree,
+    div('.scenario-name', [
+      scenarioNameVtree
+    ]),
 
     h("svg", { attrs: { width: 800, height: 600 } }, [
       ...lines.map((_, index) =>
@@ -188,10 +230,101 @@ function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
   ]);
 }
 
+function renderActor(actor: Actor): VNode {
+  return h("rect", {
+    attrs: {
+      x: 0 - actor.width / 2,
+      y: 0 - actor.height / 2,
+      height: actor.height,
+      width: actor.width,
+      fill: actor.color
+    }
+  });
+}
+
 function activeScenario(project: Project): Scenario | undefined {
   return project.scenarios.find(
     scenario => scenario.id === project.selectedScenarioId
   );
+}
+
+function selectedActor(project: Project): Actor | undefined {
+  return project.actors.find(actor => actor.id === project.selectedActorId);
+}
+
+interface IActorPanelSources extends ISources {
+  actor$: Stream<Actor>;
+}
+
+interface IActorPanelSinks extends ISinks {
+  actorChange$: Stream<Partial<Actor>>;
+}
+
+function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
+  const actorName$ = sources.actor$.map(actor => actor.name);
+  const actorNameComponent = isolate(ProjectName)({
+    ...sources,
+    name$: actorName$
+  });
+
+  const nameChange$ = actorNameComponent.nameChange$.map((name: string) => ({
+    name
+  }));
+
+  const widthChange$ = sources.DOM
+    .select(".width")
+    .events("change")
+    .map(ev => parseFloat((ev.target as any).value))
+    .map(width => ({ width }));
+
+  const heightChange$ = sources.DOM
+    .select(".height")
+    .events("change")
+    .map(ev => parseFloat((ev.target as any).value))
+    .map(height => ({ height }));
+
+  const colorChange$ = sources.DOM
+    .select(".color")
+    .events("change")
+    .map(ev => (ev.target as any).value)
+    .map(color => ({ color }));
+
+  function view([actor, nameVtree]: [Actor, VNode]): VNode {
+    return div(".actor-panel.flex-column", [
+      nameVtree,
+      "Width",
+      input(".width", { props: { value: actor.width } }),
+      "Height",
+      input(".height", { props: { value: actor.height } }),
+
+      "Color",
+      input(".color", { props: { value: actor.color } }),
+
+      "Preview",
+
+      h(
+        "svg",
+        {
+          attrs: { width: '100%', height: 300, viewBox: `-150 -150 300 300` },
+          style: { background: "#222" }
+        },
+        [renderActor(actor)]
+      ),
+
+      button(".add-to-scene", "Add to scene")
+    ]);
+  }
+
+  return {
+    DOM: xs.combine(sources.actor$, actorNameComponent.DOM).map(view),
+
+    actorChange$: xs.merge(
+      nameChange$,
+      widthChange$,
+      heightChange$,
+      colorChange$
+    )
+  };
 }
 
 function Project(sources: ISources): ISinks {
@@ -203,9 +336,7 @@ function Project(sources: ISources): ISinks {
 
   const initialPersistence$ = projectResult$
     .filter((project: Project | undefined) => project === undefined)
-    .mapTo(
-      $add("projects", { id: sources.id, name: "Untitled", scenarios: [] })
-    );
+    .mapTo($add("projects", makeProject(sources.id as string)));
 
   const nameComponent = isolate(ProjectName)({
     ...sources,
@@ -234,6 +365,19 @@ function Project(sources: ISources): ISinks {
       };
     });
 
+  const addActor$ = sources.DOM
+    .select(".add-actor")
+    .events("click")
+    .map(() => (project: Project): Project => {
+      const actor = makeActor();
+
+      return {
+        ...project,
+
+        actors: project.actors.concat(actor)
+      };
+    });
+
   const selectScenario$ = sources.DOM
     .select(".select-scenario")
     .events("click")
@@ -242,6 +386,17 @@ function Project(sources: ISources): ISinks {
         ...project,
 
         selectedScenarioId: (ev.currentTarget as any).dataset.id
+      };
+    });
+
+  const selectActor$ = sources.DOM
+    .select(".select-actor")
+    .events("click")
+    .map(ev => (project: Project): Project => {
+      return {
+        ...project,
+
+        selectedActorId: (ev.currentTarget as any).dataset.id
       };
     });
 
@@ -272,16 +427,44 @@ function Project(sources: ISources): ISinks {
     }
   );
 
+  const isActor = (actor: Actor | undefined): actor is Actor =>
+    !!actor && "id" in actor;
+
+  const activeActor$ = project$.map(selectedActor).filter(isActor);
+
+  const actorPanel = isolate(ActorPanel)({ ...sources, actor$: activeActor$ });
+
+  const changeActorName$ = actorPanel.actorChange$.map(
+    (change: Partial<Actor>) => {
+      return function(project: Project): Project {
+        return {
+          ...project,
+          actors: project.actors.map(
+            (actor: Actor) =>
+              actor.id === project.selectedActorId
+                ? { ...actor, ...change }
+                : actor
+          )
+        };
+      };
+    }
+  );
+
   const reducer$ = xs.merge(
     changeName$,
     addScenario$,
     selectScenario$,
-    changeScenarioName$
+    changeScenarioName$,
+    addActor$,
+    selectActor$,
+    changeActorName$
   );
 
   const update$ = project$
     .map(project =>
-      reducer$.map((reducer: (project: Project) => Project) => $update("projects", reducer(project)))
+      reducer$.map((reducer: (project: Project) => Project) =>
+        $update("projects", reducer(project))
+      )
     )
     .flatten();
 
@@ -290,25 +473,43 @@ function Project(sources: ISources): ISinks {
       .combine(
         project$,
         nameComponent.DOM,
-        scenarioNameComponent.DOM.startWith(div())
+        scenarioNameComponent.DOM.startWith(div()),
+        actorPanel.DOM.startWith(div())
       )
-      .map(([project, nameVtree, scenarioNameVtree]: [any, VNode, VNode]) =>
-        div(".project", [
-          div(".sidebar.flex-column", [
-            nameVtree,
-            "Scenarios",
-            div(".scenarios", project.scenarios.map(renderScenarioButton)),
-            button(".add-scenario", "Add scenario")
-          ]),
-          div(".preview", [
-            project.selectedScenarioId
-              ? renderScenario(
-                  activeScenario(project) as Scenario,
-                  scenarioNameVtree
-                )
-              : "No scenario selected"
+      .map(
+        (
+          [project, nameVtree, scenarioNameVtree, actorPanelVtree]: [
+            any,
+            VNode,
+            VNode,
+            VNode
+          ]
+        ) =>
+          div(".project", [
+            div(".actor-sidebar.sidebar.flex-column", [
+              nameVtree,
+              div(".sidebar-title", "Scenarios"),
+              div(".scenarios", project.scenarios.map(renderScenarioButton)),
+              button(".add-scenario", "Add scenario"),
+
+              div(".sidebar-title", "Actors"),
+              div(".actors", project.actors.map(renderActorButton)),
+              button(".add-actor", "Add actor")
+            ]),
+            div(".preview", [
+              project.selectedScenarioId
+                ? renderScenario(
+                    activeScenario(project) as Scenario,
+                    scenarioNameVtree
+                  )
+                : "No scenario selected"
+            ]),
+            div(".sidebar.flex-column", [
+              project.selectedActorId
+                ? actorPanelVtree
+                : "Select an actor to see details"
+            ])
           ])
-        ])
       ),
 
     DB: xs.merge(initialPersistence$, update$)
