@@ -3,6 +3,7 @@
   "version": "0.0.2",
   "description": "Accessible game development, powered by genetic programming",
   "scripts": {
+    "start": "budo src/editor.ts --css styles.css --live -- -p tsify",
     "pretitter": "prettier **/*.ts --write",
     "test": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register --recursive",
     "test/auto": "./node_modules/mocha/bin/mocha --compilers ts:ts-node/register -c -R min --watch --recursive"
@@ -20,8 +21,6 @@
     "prettier": "^1.5.3",
     "ts-node": "^3.0.4",
     "tsify": "^3.0.1",
-    "tslint": "^5.2.0",
-    "tslint-config-standard": "^5.0.2",
     "typescript": "^2.3.2"
   },
   "dependencies": {

@@ -14,6 +14,7 @@ interface ISinks {
 }
 
 function main(sources: ISources): ISinks {
+  sources
   return {
     DOM: xs.of(div('hello world!'))
   }
