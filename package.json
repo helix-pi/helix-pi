@@ -27,6 +27,7 @@
   "dependencies": {
     "@cycle/dom": "^18.1.0",
     "@cycle/history": "^6.4.0",
+    "@cycle/isolate": "^3.1.0",
     "@cycle/run": "^3.2.0",
     "@cycle/time": "^0.8.0",
     "@types/random-js": "^1.0.30",

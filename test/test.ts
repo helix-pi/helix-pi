@@ -15,6 +15,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {},
 
           actors: {
@@ -51,6 +52,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {},
 
           actors: {
@@ -90,6 +92,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {},
 
           actors: {
@@ -128,6 +131,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {},
 
           actors: {
@@ -168,6 +172,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {
             1: [{ type: "keydown", key: "Right" }]
           },
@@ -214,6 +219,7 @@ describe("Helix Pi", () => {
       scenarios: [
         {
           id: '0',
+          name: '0',
           input: {
             1: [{ type: "keydown", key: "Right" }]
           },
@@ -237,6 +243,7 @@ describe("Helix Pi", () => {
         },
         {
           id: '1',
+          name: '0',
           input: {
             1: [{ type: "keydown", key: "Left" }]
           },

@@ -80,7 +80,7 @@ export type Leaf = {
 };
 
 export type Scenario = {
-  name?: string;
+  name: string;
   id: string;
   input: UserInput;
   actors: { [key: string]: ActorFrame[] };

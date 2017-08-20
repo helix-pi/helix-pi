@@ -6,11 +6,13 @@ import {
   div,
   input,
   a,
+  h,
   button,
   DOMSource,
   VNode
 } from "@cycle/dom";
 import { makeHistoryDriver } from "@cycle/history";
+import isolate from "@cycle/isolate";
 import makeIDBDriver, { $add, $update } from "cycle-idb";
 import { timeDriver, TimeSource } from "@cycle/time";
 import { run } from "@cycle/run";
@@ -49,7 +51,7 @@ function homeView(projects: Project[]): VNode {
     h1("Helix Pi"),
 
     div(".options", [
-      a(".new-project", { attrs: { href: "#" } }, "Create new project"),
+      a(".new-project", "Create new project"),
 
       div(".recent-projects", [
         h2("Recent projects"),
@@ -151,10 +153,53 @@ function renderScenarioButton(scenario: Scenario): VNode {
   ]);
 }
 
+function renderScenario(scenario: Scenario, scenarioNameVtree: VNode): VNode {
+  scenario;
+  const lines = new Array(Math.ceil(800 / 48)).fill(0);
+
+  return div(".scenario", [
+    scenarioNameVtree,
+
+    h("svg", { attrs: { width: 800, height: 600 } }, [
+      ...lines.map((_, index) =>
+        h("line", {
+          attrs: {
+            x1: 0,
+            y1: index * 48,
+            x2: 800,
+            y2: index * 48,
+            stroke: "#333"
+          }
+        })
+      ),
+
+      ...lines.map((_, index) =>
+        h("line", {
+          attrs: {
+            x1: index * 48,
+            y1: 0,
+            x2: index * 48,
+            y2: 600,
+            stroke: "#333"
+          }
+        })
+      )
+    ])
+  ]);
+}
+
+function activeScenario(project: Project): Scenario | undefined {
+  return project.scenarios.find(
+    scenario => scenario.id === project.selectedScenarioId
+  );
+}
+
 function Project(sources: ISources): ISinks {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
-  const project$ = projectResult$.filter(Boolean) as Stream<Project>;
+  const project$ = projectResult$.filter(Boolean).debug("project$") as Stream<
+    Project
+  >;
 
   const initialPersistence$ = projectResult$
     .filter((project: Project | undefined) => project === undefined)
@@ -162,13 +207,13 @@ function Project(sources: ISources): ISinks {
       $add("projects", { id: sources.id, name: "Untitled", scenarios: [] })
     );
 
-  const nameComponent = ProjectName({
+  const nameComponent = isolate(ProjectName)({
     ...sources,
     name$: project$.map((project: any) => project.name)
   });
 
   const changeName$ = nameComponent.nameChange$.map(
-    name => (project: any): any => ({
+    (name: string) => (project: any): any => ({
       ...project,
       name
     })
@@ -179,6 +224,7 @@ function Project(sources: ISources): ISinks {
     .events("click")
     .map(() => (project: Project): Project => {
       const scenario = makeScenario();
+
       return {
         ...project,
 
@@ -189,32 +235,64 @@ function Project(sources: ISources): ISinks {
     });
 
   const selectScenario$ = sources.DOM
-    .select('.select-scenario')
-  .events('click')
-  .map(ev => (project: Project): Project => {
-    return {
-      ...project,
+    .select(".select-scenario")
+    .events("click")
+    .map(ev => (project: Project): Project => {
+      return {
+        ...project,
 
-      selectedScenarioId: (ev.currentTarget as any).dataset.id
-    }
+        selectedScenarioId: (ev.currentTarget as any).dataset.id
+      };
+    });
+
+  const activeScenario$ = project$
+    .map(activeScenario)
+    .filter(Boolean) as Stream<Scenario>;
+
+  const activeScenarioName$ = activeScenario$.map(scenario => scenario.name);
+
+  const scenarioNameComponent = isolate(ProjectName)({
+    ...sources,
+    name$: activeScenarioName$
   });
 
-  const reducer$ = xs.merge(
-    project$.take(1).map((project: any) => () => project),
-    changeName$,
-    addScenario$,
-    selectScenario$
+  const changeScenarioName$ = scenarioNameComponent.nameChange$.map(
+    (name: string) => {
+      return function(project: Project): Project {
+        return {
+          ...project,
+          scenarios: project.scenarios.map(
+            (scenario: Scenario) =>
+              scenario.id === project.selectedScenarioId
+                ? { ...scenario, name }
+                : scenario
+          )
+        };
+      };
+    }
   );
 
-  const update$ = reducer$
-    .fold((project: any, reducer: any) => reducer(project), null)
-    .drop(1)
-    .map(project => $update("projects", project));
+  const reducer$ = xs.merge(
+    changeName$,
+    addScenario$,
+    selectScenario$,
+    changeScenarioName$
+  );
+
+  const update$ = project$
+    .map(project =>
+      reducer$.map((reducer: (project: Project) => Project) => $update("projects", reducer(project)))
+    )
+    .flatten();
 
   return {
     DOM: xs
-      .combine(project$, nameComponent.DOM)
-      .map(([project, nameVtree]: [any, VNode]) =>
+      .combine(
+        project$,
+        nameComponent.DOM,
+        scenarioNameComponent.DOM.startWith(div())
+      )
+      .map(([project, nameVtree, scenarioNameVtree]: [any, VNode, VNode]) =>
         div(".project", [
           div(".sidebar.flex-column", [
             nameVtree,
@@ -223,7 +301,12 @@ function Project(sources: ISources): ISinks {
             button(".add-scenario", "Add scenario")
           ]),
           div(".preview", [
-            project.selectedScenarioId || "No scenario selected"
+            project.selectedScenarioId
+              ? renderScenario(
+                  activeScenario(project) as Scenario,
+                  scenarioNameVtree
+                )
+              : "No scenario selected"
           ])
         ])
       ),
@@ -289,7 +372,7 @@ function main(sources: ISources): ISinks {
 
     Router: xs.merge(
       home$.mapTo(`/`),
-      newProject$.mapTo(`/project/${sources.ID()}`),
+      newProject$.mapTo(`/project/${uuid.v4()}`),
       gotoProject$
     )
   };
