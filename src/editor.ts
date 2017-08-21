@@ -28,6 +28,7 @@ interface Project {
   name: string;
   selectedScenarioId: null | string;
   selectedActorId: null | string;
+  selectedScenarioObject: null | string;
 
   scenarios: Scenario[];
   actors: Actor[];
@@ -176,7 +177,8 @@ function makeProject(id: string): Project {
     scenarios: [scenario],
     actors: [],
     selectedScenarioId: scenario.id,
-    selectedActorId: null
+    selectedActorId: null,
+    selectedScenarioObject: null
   };
 }
 
@@ -192,51 +194,74 @@ function renderActorButton(actor: Actor): VNode {
   ]);
 }
 
-function renderScenario(project: Project, scenario: Scenario, scenarioNameVtree: VNode): VNode {
+function renderScenario(
+  project: Project,
+  scenario: Scenario,
+  scenarioNameVtree: VNode
+): VNode {
   scenario;
   const lines = new Array(Math.ceil(800 / 50)).fill(0);
 
   return div(".scenario", [
     div(".scenario-name", [scenarioNameVtree]),
 
-    h("svg", { attrs: { width: 800, height: 600 } }, [
-      ...lines.map((_, index) =>
-        h("line", {
-          attrs: {
-            x1: 0,
-            y1: index * 50,
-            x2: 800,
-            y2: index * 50,
-            stroke: "#333"
-          }
+    h(
+      "svg",
+      { class: { simulation: true }, attrs: { width: 800, height: 600 } },
+      [
+        ...lines.map((_, index) =>
+          h("line", {
+            attrs: {
+              x1: 0,
+              y1: index * 50,
+              x2: 800,
+              y2: index * 50,
+              stroke: "#333"
+            }
+          })
+        ),
+
+        ...lines.map((_, index) =>
+          h("line", {
+            attrs: {
+              x1: index * 50,
+              y1: 0,
+              x2: index * 50,
+              y2: 600,
+              stroke: "#333"
+            }
+          })
+        ),
+
+        ...Object.keys(scenario.actors).map(id => {
+          const actor = project.actors.find(actor => actor.id === id) as Actor;
+          const frame = (scenario.actors[id] as any)[0];
+          const selected = actor.id === project.selectedScenarioObject;
+
+          return renderActor(
+            actor,
+            frame.position.x,
+            frame.position.y,
+            selected
+          );
         })
-      ),
-
-      ...lines.map((_, index) =>
-        h("line", {
-          attrs: {
-            x1: index * 50,
-            y1: 0,
-            x2: index * 50,
-            y2: 600,
-            stroke: "#333"
-          }
-        })
-      ),
-
-      ...Object.keys(scenario.actors).map(id => {
-        const actor = project.actors.find(actor => actor.id === id) as Actor;
-        const frame = (scenario.actors[id] as any)[0];
-
-        return renderActor(actor, frame.position.x, frame.position.y);
-      })
-    ])
+      ]
+    )
   ]);
 }
 
-function renderActor(actor: Actor, x: number, y: number): VNode {
-  return h("rect", {
+function renderActor(
+  actor: Actor,
+  x: number,
+  y: number,
+  selected = false
+): VNode {
+  const actorVTree = h("rect", {
+    class: {
+      actor: true
+    },
     attrs: {
+      id: actor.id,
       x: x - actor.width / 2,
       y: y - actor.height / 2,
       height: actor.height,
@@ -244,6 +269,27 @@ function renderActor(actor: Actor, x: number, y: number): VNode {
       fill: actor.color
     }
   });
+
+  if (!selected) {
+    return actorVTree;
+  }
+
+  const outlineExtraSize = 10;
+
+  return h("g", [
+    actorVTree,
+
+    h("rect", {
+      attrs: {
+        x: x - actor.width / 2 - outlineExtraSize / 2,
+        y: y - actor.height / 2 - outlineExtraSize / 2,
+        height: actor.height + outlineExtraSize,
+        width: actor.width + outlineExtraSize,
+        stroke: "skyblue",
+        fill: "none"
+      }
+    })
+  ]);
 }
 
 function activeScenario(project: Project): Scenario | undefined {
@@ -295,12 +341,12 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
     .map(color => ({ color }));
 
   const addActorToScenario$ = sources.DOM
-    .select('.add-to-scenario')
-    .events('click');
+    .select(".add-to-scenario")
+    .events("click");
 
   function view([actor, nameVtree]: [Actor, VNode]): VNode {
     return div(".actor-panel.flex-column", [
-      div('.attributes.flex-column', [
+      div(".attributes.flex-column", [
         nameVtree,
         "Width",
         input(".width", { props: { value: actor.width } }),
@@ -310,11 +356,10 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
         "Color",
         input(".color", { props: { value: actor.color } }),
 
-
-        button(".add-to-scenario", "Add to scenario"),
+        button(".add-to-scenario", "Add to scenario")
       ]),
 
-      div('.sidebar-preview.flex-column',[
+      div(".sidebar-preview.flex-column", [
         "Preview",
 
         h(
@@ -324,7 +369,7 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
             style: { background: "#222" }
           },
           [renderActor(actor, 0, 0)]
-        ),
+        )
       ])
     ]);
   }
@@ -363,6 +408,88 @@ function Project(sources: ISources): ISinks {
       name
     })
   );
+
+  const actorMouseDown$ = sources.DOM
+    .select(".actor")
+    .events("mousedown")
+    .map((ev: any) => {
+      const actorId = ev.target.id;
+
+      ev.stopPropagation(); // I am evil
+
+      return actorId;
+    });
+
+  const selectActorInScenario$ = actorMouseDown$.map(actorId => {
+    return function(project: Project): Project {
+      return {
+        ...project,
+
+        selectedScenarioObject: actorId
+      };
+    };
+  });
+
+  const clearActorSelection$ = sources.DOM
+    .select(".simulation")
+    .events("mousedown")
+    .map(() => {
+      return function(project: Project): Project {
+        return {
+          ...project,
+
+          selectedScenarioObject: null
+        };
+      };
+    });
+
+  const mouseMove$ = sources.DOM
+    .select("document")
+    .events("mousemove")
+    .map((ev: MouseEvent) => ({ x: ev.clientX, y: ev.clientY }));
+
+  const simulationElement$ = sources.DOM
+    .select(".simulation")
+    .elements()
+    .filter((elements: Element[]) => elements.length > 0)
+    .map((elements: Element[]) => elements[0]);
+
+  const simulationMousePosition$ = simulationElement$
+    .map((svg: any) =>
+      mouseMove$.map(position => {
+        const point = svg.createSVGPoint();
+
+        point.x = position.x;
+        point.y = position.y;
+
+        const result = point.matrixTransform(svg.getScreenCTM().inverse());
+
+        return {
+          x: result.x,
+          y: result.y
+        };
+      })
+    )
+    .flatten();
+
+  const mouseUp$ = sources.DOM.select("document").events("mouseup");
+
+  const moveActor$ = actorMouseDown$
+    .map((actorId: string) =>
+      simulationMousePosition$
+        .map(position => ({ actorId, position }))
+        .endWhen(mouseUp$)
+    )
+    .flatten()
+    .map(move => {
+      return function(project: Project): Project {
+        const scenario = activeScenario(project);
+
+        (scenario as any).actors[move.actorId][0].position = move.position;
+
+        return project;
+      };
+    });
 
   const addScenario$ = sources.DOM
     .select(".add-scenario")
@@ -448,21 +575,31 @@ function Project(sources: ISources): ISinks {
 
   const actorPanel = isolate(ActorPanel)({ ...sources, actor$: activeActor$ });
 
-  const addActorToScenario$ = actorPanel.addActorToScenario$.map(() =>
-    function (project: Project): Project {
-      const actor = selectedActor(project) as Actor;
+  const addActorToScenario$ = actorPanel.addActorToScenario$.map(
+    () =>
+      function(project: Project): Project {
+        const actor = selectedActor(project) as Actor;
 
-      return {
-        ...project,
+        return {
+          ...project,
 
           scenarios: project.scenarios.map(
             (scenario: Scenario) =>
               scenario.id === project.selectedScenarioId
-                ? { ...scenario, actors: {...scenario.actors, [actor.id]: [{frame: 0, position: {x: 100, y: 100}}]}}
+                ? {
+                    ...scenario,
+
+                    selectedScenarioObject: actor.id,
+
+                    actors: {
+                      ...scenario.actors,
+                      [actor.id]: [{ frame: 0, position: { x: 100, y: 100 } }]
+                    }
+                  }
                 : scenario
           )
+        };
       }
-    }
   );
 
   const changeActorName$ = actorPanel.actorChange$.map(
@@ -489,7 +626,10 @@ function Project(sources: ISources): ISinks {
     addActor$,
     selectActor$,
     changeActorName$,
-    addActorToScenario$
+    addActorToScenario$,
+    selectActorInScenario$,
+    clearActorSelection$,
+    moveActor$
   );
 
   const update$ = project$
