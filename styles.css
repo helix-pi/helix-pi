@@ -5,6 +5,16 @@ html, body {
 
   background: #111;
   color: #EEE;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: hidden;
+}
+
+:root {
+  --nav-height: 20px;
+  --display-height: 100% - var(--nav-height);
 }
 
 .helix-pi {
@@ -44,12 +54,13 @@ a:hover {
 
 .nav-bar {
   background: #222;
+  height: 20px;
 }
 
 .project {
   display: flex;
   justify-content: space-between;
-  height: 100%;
+  height: calc(100% - 20px);
 }
 
 .project .sidebar {
@@ -72,8 +83,13 @@ a:hover {
   margin: 3px 0px;
 }
 
+.actor-panel {
+  justify-content: space-between;
+  height: calc(100% - 20px); // TODO - why?
+}
+
 .scenario {
-  margin: 15px;
+  margin: 10px;
 }
 
 .scenario svg {
@@ -81,7 +97,7 @@ a:hover {
 }
 
 .scenario-name {
-  height: 40px;
+  margin: 5px;
 }
 
 input, button {

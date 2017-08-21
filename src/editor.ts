@@ -300,27 +300,32 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
 
   function view([actor, nameVtree]: [Actor, VNode]): VNode {
     return div(".actor-panel.flex-column", [
-      nameVtree,
-      "Width",
-      input(".width", { props: { value: actor.width } }),
-      "Height",
-      input(".height", { props: { value: actor.height } }),
+      div('.attributes.flex-column', [
+        nameVtree,
+        "Width",
+        input(".width", { props: { value: actor.width } }),
+        "Height",
+        input(".height", { props: { value: actor.height } }),
 
-      "Color",
-      input(".color", { props: { value: actor.color } }),
+        "Color",
+        input(".color", { props: { value: actor.color } }),
 
-      "Preview",
 
-      h(
-        "svg",
-        {
-          attrs: { width: "100%", height: 300, viewBox: `-150 -150 300 300` },
-          style: { background: "#222" }
-        },
-        [renderActor(actor, 0, 0)]
-      ),
+        button(".add-to-scenario", "Add to scenario"),
+      ]),
 
-      button(".add-to-scenario", "Add to scenario")
+      div('.sidebar-preview.flex-column',[
+        "Preview",
+
+        h(
+          "svg",
+          {
+            attrs: { height: 300, viewBox: `-150 -150 300 300` },
+            style: { background: "#222" }
+          },
+          [renderActor(actor, 0, 0)]
+        ),
+      ])
     ]);
   }
 
