@@ -20,7 +20,9 @@ import { routerify, RouterSource, RouterSink } from "cyclic-router";
 import switchPath from "switch-path";
 import * as uuid from "uuid";
 import xs, { Stream } from "xstream";
+import sampleCombine from "xstream/extra/sampleCombine";
 
+import { Vector, add, subtract } from "./vector";
 import { Scenario } from "./index";
 
 interface Project {
@@ -29,6 +31,8 @@ interface Project {
   selectedScenarioId: null | string;
   selectedActorId: null | string;
   selectedScenarioObject: null | string;
+
+  dragOffset: Vector | null;
 
   scenarios: Scenario[];
   actors: Actor[];
@@ -178,7 +182,8 @@ function makeProject(id: string): Project {
     actors: [],
     selectedScenarioId: scenario.id,
     selectedActorId: null,
-    selectedScenarioObject: null
+    selectedScenarioObject: null,
+    dragOffset: null
   };
 }
 
@@ -388,6 +393,13 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
   };
 }
 
+function mousePositionFromEvent(ev: MouseEvent): Vector {
+  return {
+    x: ev.clientX,
+    y: ev.clientY
+  };
+}
+
 function Project(sources: ISources): ISinks {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
@@ -420,16 +432,6 @@ function Project(sources: ISources): ISinks {
       return actorId;
     });
 
-  const selectActorInScenario$ = actorMouseDown$.map(actorId => {
-    return function(project: Project): Project {
-      return {
-        ...project,
-
-        selectedScenarioObject: actorId
-      };
-    };
-  });
-
   const clearActorSelection$ = sources.DOM
     .select(".simulation")
     .events("mousedown")
@@ -438,7 +440,9 @@ function Project(sources: ISources): ISinks {
         return {
           ...project,
 
-          selectedScenarioObject: null
+          selectedScenarioObject: null,
+
+          dragOffset: null
         };
       };
     });
@@ -446,7 +450,7 @@ function Project(sources: ISources): ISinks {
   const mouseMove$ = sources.DOM
     .select("document")
     .events("mousemove")
-    .map((ev: MouseEvent) => ({ x: ev.clientX, y: ev.clientY }));
+    .map(mousePositionFromEvent);
 
   const simulationElement$ = sources.DOM
     .select(".simulation")
@@ -475,7 +479,7 @@ function Project(sources: ISources): ISinks {
   const mouseUp$ = sources.DOM.select("document").events("mouseup");
 
   const moveActor$ = actorMouseDown$
-    .map((actorId: string) =>
+    .map((actorId) =>
       simulationMousePosition$
         .map(position => ({ actorId, position }))
         .endWhen(mouseUp$)
@@ -485,11 +489,36 @@ function Project(sources: ISources): ISinks {
       return function(project: Project): Project {
         const scenario = activeScenario(project);
 
-        (scenario as any).actors[move.actorId][0].position = move.position;
+        (scenario as any).actors[move.actorId][0].position = add(
+          move.position,
+          project.dragOffset as Vector
+        );
 
         return project;
       };
     });
+
+  const mouseDownWithPosition$ = actorMouseDown$.compose(
+    sampleCombine(simulationMousePosition$)
+  );
+
+  const selectActorInScenario$ = mouseDownWithPosition$.map(
+    ([actorId, mousePosition]: [string, Vector]) => {
+      return function(project: Project): Project {
+        const actorPosition = (activeScenario(project) as any).actors[
+          actorId
+        ][0].position;
+
+        return {
+          ...project,
+
+          selectedScenarioObject: actorId,
+
+          dragOffset: subtract(actorPosition, mousePosition)
+        };
+      };
+    }
+  );
 
   const addScenario$ = sources.DOM
     .select(".add-scenario")

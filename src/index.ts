@@ -1,4 +1,3 @@
-import * as Random from "random-js";
 // What was wrong with the historic helix pi codebase?
 //
 // It was nondeterministic, tests would occasionally fail.
@@ -20,6 +19,9 @@ import * as Random from "random-js";
 // Actors represent behaviours attached to an image in a scene
 // Helix pi takes a collection of scenarios and returns entities that behave as the actors do
 // Entities are an ast of code that behaves a certain way in response to input and time
+import * as Random from "random-js";
+
+import { Vector, distance, subtract } from "./vector";
 
 const MAX_SEQUENCE_CHILD_COUNT = 3;
 const MAX_SEED = Math.pow(2, 32);
@@ -86,11 +88,6 @@ export type Scenario = {
   actors: { [key: string]: ActorFrame[] };
 };
 
-export type Vector = {
-  x: number;
-  y: number;
-};
-
 export type ActorFrame = {
   frame: number;
   position: Vector;
@@ -109,16 +106,8 @@ export type EntityErrorLevels = {
   [key: string]: number;
 };
 
-function distance(a: Vector, b: Vector): number {
-  return Math.abs(Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)));
-}
-
-function add(a: number, b: number): number {
-  return a + b;
-}
-
 function sum(array: number[]): number {
-  return array.reduce(add, 0);
+  return array.reduce((a, b) => a + b, 0);
 }
 
 function simulateAndFindErrorLevel(
@@ -140,7 +129,7 @@ function simulateAndFindErrorLevel(
     postFrameCallback: (frame: number, positions: ActorPositions) => {
       const expectedPosition = scenario.actors[actor][frame].position;
 
-      errorLevels.push(distance(expectedPosition, positions[actor]));
+      errorLevels.push(distance(subtract(expectedPosition, positions[actor])));
     }
   };
 
