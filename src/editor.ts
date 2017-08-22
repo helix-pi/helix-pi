@@ -261,7 +261,7 @@ function renderTimeBar(
     renderPlayPauseControls(playing),
 
     h("rect", {
-      attrs: { x: controlWidth, y: 5, width: 760, height: 85, fill: "#181818" }
+      attrs: { x: controlWidth, y: 5, width: 750, height: 85, fill: "#181818" }
     }),
 
     ...lines.map((_, index) =>
@@ -563,6 +563,20 @@ function mousePositionFromEvent(ev: MouseEvent): Vector {
   };
 }
 
+function mousePositionOnSvg (position: Vector, svg: any): Vector {
+  const point = svg.createSVGPoint();
+
+  point.x = position.x;
+  point.y = position.y;
+
+  const result = point.matrixTransform(svg.getScreenCTM().inverse());
+
+  return {
+    x: result.x,
+    y: result.y
+  };
+}
+
 function Project(sources: ISources): ISinks {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
@@ -656,19 +670,7 @@ function Project(sources: ISources): ISinks {
 
   const simulationMousePosition$ = simulationElement$
     .map((svg: any) =>
-      mouseMove$.map(position => {
-        const point = svg.createSVGPoint();
-
-        point.x = position.x;
-        point.y = position.y;
-
-        const result = point.matrixTransform(svg.getScreenCTM().inverse());
-
-        return {
-          x: result.x,
-          y: result.y
-        };
-      })
+      mouseMove$.map(position => mousePositionOnSvg(position, svg))
     )
     .flatten();
 
@@ -783,6 +785,32 @@ function Project(sources: ISources): ISinks {
     name$: activeScenarioName$
   });
 
+  const timeBarElement$ = sources.DOM
+    .select('.timebar')
+  .elements()
+    .filter((elements: Element[]) => elements.length > 0)
+    .map((elements: Element[]) => elements[0]);
+
+  const changeTime$ = sources.DOM
+    .select('.timebar')
+    .events('mousedown')
+    .map(mousePositionFromEvent)
+    .compose(sampleCombine(timeBarElement$))
+    .map(([position, element]) => mousePositionOnSvg(position, element))
+    .map(position => {
+      const x = (position.x - 50) / 750;
+
+      const frame = Math.max(0, Math.floor(8 * 60 * x));
+
+      return function (project: Project): Project {
+        return {
+          ...project,
+
+          currentFrame: frame
+        }
+      }
+    });
+
   const changeScenarioName$ = scenarioNameComponent.nameChange$.map(
     (name: string) => {
       return function(project: Project): Project {
@@ -861,7 +889,8 @@ function Project(sources: ISources): ISinks {
     selectActorInScenario$,
     clearActorSelection$,
     moveActor$,
-    advanceFrame$
+    advanceFrame$,
+    changeTime$
   );
 
   const update$ = project$
