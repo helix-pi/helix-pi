@@ -32,6 +32,8 @@ interface Project {
   selectedActorId: null | string;
   selectedScenarioObject: null | string;
 
+  currentFrame: number;
+
   dragOffset: Vector | null;
 
   scenarios: Scenario[];
@@ -183,7 +185,8 @@ function makeProject(id: string): Project {
     selectedScenarioId: scenario.id,
     selectedActorId: null,
     selectedScenarioObject: null,
-    dragOffset: null
+    dragOffset: null,
+    currentFrame: 0
   };
 }
 
@@ -199,59 +202,219 @@ function renderActorButton(actor: Actor): VNode {
   ]);
 }
 
+function renderPlayPauseControls(playing: boolean) {
+  if (!playing) {
+    return h("polygon", {
+      class: { play: true },
+      attrs: { points: "10,55 40,70 10,85", fill: "lime" }
+    });
+  }
+
+  return h("g", { class: { pause: true } }, [
+    h("rect", {
+      attrs: {
+        x: 15,
+        y: 55,
+        height: 30,
+        width: 5,
+        fill: "lime"
+      }
+    }),
+    h("rect", {
+      attrs: {
+        x: 30,
+        y: 55,
+        height: 30,
+        width: 5,
+        fill: "lime"
+      }
+    })
+  ]);
+}
+
+function renderTimeBar(
+  project: Project,
+  scenario: Scenario,
+  playing: boolean
+): VNode {
+  const previewFrames = new Array(10).fill(0);
+
+  const lines = new Array(100).fill(0);
+
+  const previewWidth = 93.3;
+
+  const controlWidth = 50;
+
+  const frame = project.currentFrame;
+
+  const frameMarkerX = controlWidth + frame / 60 * previewWidth;
+
+  return h("svg", { class: { timebar: true } }, [
+    h("circle", {
+      attrs: { cx: 25, cy: 25, r: 15, fill: "darkred" }
+    }),
+
+    h("circle", {
+      attrs: { cx: 25, cy: 25, r: 15, fill: "red" }
+    }),
+
+    renderPlayPauseControls(playing),
+
+    h("rect", {
+      attrs: { x: controlWidth, y: 5, width: 760, height: 85, fill: "#181818" }
+    }),
+
+    ...lines.map((_, index) =>
+      h("line", {
+        attrs: {
+          x1: controlWidth + index * previewWidth / 10,
+          y1: 75,
+          x2: controlWidth + index * previewWidth / 10,
+          y2: 75 + (index % 10 === 0 ? 5 : 3),
+          stroke: "#555"
+        }
+      })
+    ),
+
+    ...previewFrames.map((_, index) =>
+      h("g", [
+        renderSimulation(project, scenario, index * 60, false, true, index),
+        index > 0
+          ? h(
+              "text",
+              {
+                attrs: {
+                  x: controlWidth + index * 93.3 - 3,
+                  y: 89,
+                  fill: "#888",
+                  stroke: "#888",
+                  "font-size": "8pt"
+                }
+              },
+              `${index}s`
+            )
+          : "",
+
+        h("rect", {
+          attrs: {
+            x: controlWidth + index * 93.3,
+            y: 5,
+            width: previewWidth,
+            height: 70,
+            stroke: "#555",
+            fill: "none"
+          }
+        })
+      ])
+    ),
+
+    h("line", {
+      attrs: {
+        x1: frameMarkerX,
+        y1: 5,
+        x2: frameMarkerX,
+        y2: 90,
+        stroke: "white"
+      }
+    })
+  ]);
+}
+
+function last<T> (array: T[]): T {
+  return array[array.length - 1];
+}
+
+function renderSimulation(
+  project: Project,
+  scenario: Scenario,
+  frame: number,
+  grid = true,
+  mini = false,
+  offsetIndex = 0
+) {
+  const lines = new Array(Math.ceil(800 / 50)).fill(0);
+  let lineVNodes: VNode[] = [];
+
+  if (grid) {
+    lineVNodes = [
+      ...lines.map((_, index) =>
+        h("line", {
+          attrs: {
+            x1: 0,
+            y1: index * 50,
+            x2: 800,
+            y2: index * 50,
+            stroke: "#333"
+          }
+        })
+      ),
+      ...lines.map((_, index) =>
+        h("line", {
+          attrs: {
+            x1: index * 50,
+            y1: 0,
+            x2: index * 50,
+            y2: 600,
+            stroke: "#333"
+          }
+        })
+      )
+    ];
+  }
+
+  let width = 800;
+  let height = 600;
+  let x = 0;
+  let y = 0;
+
+  if (mini) {
+    height = 70;
+    width = width * (height / 600);
+    y = 5;
+    x = 50 + offsetIndex * width;
+  }
+
+  const viewBox = `0 0 800 600`;
+
+  return h(
+    "svg",
+    {
+      class: { simulation: true, mini, main: !mini },
+      attrs: { width, height, viewBox, x, y }
+    },
+    [
+      ...lineVNodes,
+
+      ...Object.keys(scenario.actors).map(id => {
+        const actor = project.actors.find(actor => actor.id === id) as Actor;
+        const frames = scenario.actors[id];
+        const actorFrame = frames[frame] || last(frames.slice(0, frame).filter(Boolean));
+        const selected = actor.id === project.selectedScenarioObject;
+
+        return renderActor(
+          actor,
+          actorFrame.position.x,
+          actorFrame.position.y,
+          selected
+        );
+      })
+    ]
+  );
+}
+
 function renderScenario(
   project: Project,
   scenario: Scenario,
+  playing: boolean,
   scenarioNameVtree: VNode
 ): VNode {
-  scenario;
-  const lines = new Array(Math.ceil(800 / 50)).fill(0);
+  return div(".scenario.flex-column", [
+    div(".simulation-container", [
+      div(".scenario-name", [scenarioNameVtree]),
+      renderSimulation(project, scenario, project.currentFrame)
+    ]),
 
-  return div(".scenario", [
-    div(".scenario-name", [scenarioNameVtree]),
-
-    h(
-      "svg",
-      { class: { simulation: true }, attrs: { width: 800, height: 600 } },
-      [
-        ...lines.map((_, index) =>
-          h("line", {
-            attrs: {
-              x1: 0,
-              y1: index * 50,
-              x2: 800,
-              y2: index * 50,
-              stroke: "#333"
-            }
-          })
-        ),
-
-        ...lines.map((_, index) =>
-          h("line", {
-            attrs: {
-              x1: index * 50,
-              y1: 0,
-              x2: index * 50,
-              y2: 600,
-              stroke: "#333"
-            }
-          })
-        ),
-
-        ...Object.keys(scenario.actors).map(id => {
-          const actor = project.actors.find(actor => actor.id === id) as Actor;
-          const frame = (scenario.actors[id] as any)[0];
-          const selected = actor.id === project.selectedScenarioObject;
-
-          return renderActor(
-            actor,
-            frame.position.x,
-            frame.position.y,
-            selected
-          );
-        })
-      ]
-    )
+    renderTimeBar(project, scenario, playing)
   ]);
 }
 
@@ -422,7 +585,7 @@ function Project(sources: ISources): ISinks {
   );
 
   const actorMouseDown$ = sources.DOM
-    .select(".actor")
+    .select(".simulation.main .actor")
     .events("mousedown")
     .map((ev: any) => {
       const actorId = ev.target.id;
@@ -433,7 +596,7 @@ function Project(sources: ISources): ISinks {
     });
 
   const clearActorSelection$ = sources.DOM
-    .select(".simulation")
+    .select(".simulation.main")
     .events("mousedown")
     .map(() => {
       return function(project: Project): Project {
@@ -453,10 +616,43 @@ function Project(sources: ISources): ISinks {
     .map(mousePositionFromEvent);
 
   const simulationElement$ = sources.DOM
-    .select(".simulation")
+    .select(".simulation.main")
     .elements()
     .filter((elements: Element[]) => elements.length > 0)
     .map((elements: Element[]) => elements[0]);
+
+  const play$ = sources.DOM.select(".play").events("click");
+
+  const pause$ = sources.DOM.select(".pause").events("click");
+
+  const playing$ = xs.merge(
+    play$.mapTo(true),
+    pause$.mapTo(false),
+    xs.of(false)
+  );
+
+  const animationFrame$ = sources.Time.animationFrames();
+
+  const advanceFrame$ = playing$
+    .map(playing =>
+      animationFrame$.filter(() => playing).map(() => {
+        return function(project: Project): Project {
+          if (project.currentFrame > 60 * 8) {
+            return {
+              ...project,
+
+              currentFrame: 0
+            };
+          }
+          return {
+            ...project,
+
+            currentFrame: project.currentFrame + 1
+          };
+        };
+      })
+    )
+    .flatten();
 
   const simulationMousePosition$ = simulationElement$
     .map((svg: any) =>
@@ -479,7 +675,7 @@ function Project(sources: ISources): ISinks {
   const mouseUp$ = sources.DOM.select("document").events("mouseup");
 
   const moveActor$ = actorMouseDown$
-    .map((actorId) =>
+    .map(actorId =>
       simulationMousePosition$
         .map(position => ({ actorId, position }))
         .endWhen(mouseUp$)
@@ -489,10 +685,16 @@ function Project(sources: ISources): ISinks {
       return function(project: Project): Project {
         const scenario = activeScenario(project);
 
-        (scenario as any).actors[move.actorId][0].position = add(
-          move.position,
-          project.dragOffset as Vector
-        );
+        if (!(scenario as any).actors[move.actorId][project.currentFrame]) {
+          (scenario as any).actors[move.actorId][project.currentFrame] = {
+            frame: project.currentFrame,
+            position: add(move.position, project.dragOffset || { x: 0, y: 0 })
+          };
+        } else {
+          (scenario as any).actors[move.actorId][
+            project.currentFrame
+          ].position = add(move.position, project.dragOffset || { x: 0, y: 0 });
+        }
 
         return project;
       };
@@ -658,7 +860,8 @@ function Project(sources: ISources): ISinks {
     addActorToScenario$,
     selectActorInScenario$,
     clearActorSelection$,
-    moveActor$
+    moveActor$,
+    advanceFrame$
   );
 
   const update$ = project$
@@ -673,19 +876,13 @@ function Project(sources: ISources): ISinks {
     DOM: xs
       .combine(
         project$,
+        playing$,
         nameComponent.DOM,
         scenarioNameComponent.DOM.startWith(div()),
         actorPanel.DOM.startWith(div())
       )
       .map(
-        (
-          [project, nameVtree, scenarioNameVtree, actorPanelVtree]: [
-            any,
-            VNode,
-            VNode,
-            VNode
-          ]
-        ) =>
+        ([project, playing, nameVtree, scenarioNameVtree, actorPanelVtree]) =>
           div(".project", [
             div(".actor-sidebar.sidebar.flex-column", [
               nameVtree,
@@ -702,7 +899,8 @@ function Project(sources: ISources): ISinks {
                 ? renderScenario(
                     project,
                     activeScenario(project) as Scenario,
-                    scenarioNameVtree
+                    playing,
+                    scenarioNameVtree as VNode
                   )
                 : "No scenario selected"
             ]),

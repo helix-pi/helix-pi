@@ -89,17 +89,30 @@ a:hover {
 }
 
 .scenario {
-  margin: 10px;
 }
 
-.scenario svg {
+.simuation {
   border: 1px solid #888;
 }
 
+.simulation-container {
+  
+}
+
 .scenario-name {
+  position: absolute;
   margin: 5px;
 }
 
 input, button {
   font-size: 1em;
+}
+
+.timebar {
+  height: 98px;
+  background: #333;
+}
+
+.timebar .simulation {
+  border: 1px solid white;
 }
