@@ -14,6 +14,7 @@ import {
 import { makeHistoryDriver } from "@cycle/history";
 import isolate from "@cycle/isolate";
 import makeIDBDriver, { $add, $update } from "cycle-idb";
+import onionify, { StateSource } from "cycle-onionify";
 import { timeDriver, TimeSource } from "@cycle/time";
 import { run } from "@cycle/run";
 import { routerify, RouterSource, RouterSink } from "cyclic-router";
@@ -23,7 +24,7 @@ import xs, { Stream } from "xstream";
 import sampleCombine from "xstream/extra/sampleCombine";
 
 import { Vector, add, subtract } from "./vector";
-import { Scenario } from "./index";
+import { Scenario, ActorFrame } from "./index";
 
 interface Project {
   id: string;
@@ -320,7 +321,7 @@ function renderTimeBar(
   ]);
 }
 
-function last<T> (array: T[]): T {
+function last<T>(array: T[]): T {
   return array[array.length - 1];
 }
 
@@ -388,7 +389,7 @@ function renderSimulation(
       ...Object.keys(scenario.actors).map(id => {
         const actor = project.actors.find(actor => actor.id === id) as Actor;
         const frames = scenario.actors[id];
-        const actorFrame = frames[frame] || last(frames.slice(0, frame).filter(Boolean));
+        const actorFrame = actorPosition(frames, frame);
         const selected = actor.id === project.selectedScenarioObject;
 
         return renderActor(
@@ -400,6 +401,10 @@ function renderSimulation(
       })
     ]
   );
+}
+
+function actorPosition(frames: ActorFrame[], frame: number) {
+  return frames[frame] || last(frames.slice(0, frame).filter(Boolean));
 }
 
 function renderScenario(
@@ -563,7 +568,7 @@ function mousePositionFromEvent(ev: MouseEvent): Vector {
   };
 }
 
-function mousePositionOnSvg (position: Vector, svg: any): Vector {
+function mousePositionOnSvg(position: Vector, svg: any): Vector {
   const point = svg.createSVGPoint();
 
   point.x = position.x;
@@ -577,14 +582,42 @@ function mousePositionOnSvg (position: Vector, svg: any): Vector {
   };
 }
 
-function Project(sources: ISources): ISinks {
+type Reducer<T> = (t: T) => T;
+
+interface IOnionifySources extends ISources {
+  onion: StateSource<Project>;
+  initialState$: Stream<Project>;
+}
+
+interface IOnionifySinks extends ISinks {
+  onion: Stream<Reducer<Project>>;
+  state$: Stream<Project>;
+}
+
+function ProjectWithDB(sources: ISources) {
   const projectResult$ = sources.DB.store("projects").get(sources.id);
 
-  const project$ = projectResult$.filter(Boolean) as Stream<Project>;
+  const initialState$ = projectResult$.filter(Boolean) as Stream<Project>;
+
+  const project = onionify(Project)({ ...sources, initialState$ });
 
   const initialPersistence$ = projectResult$
     .filter((project: Project | undefined) => project === undefined)
     .mapTo($add("projects", makeProject(sources.id as string)));
+
+  const updatePersistence$ = (project as any).state$.map((state: Project) =>
+    $update("projects", state)
+  );
+
+  return {
+    DB: xs.merge(initialPersistence$, updatePersistence$),
+
+    DOM: project.DOM
+  };
+}
+
+function Project(sources: IOnionifySources): IOnionifySinks {
+  const project$ = sources.onion.state$;
 
   const nameComponent = isolate(ProjectName)({
     ...sources,
@@ -639,11 +672,10 @@ function Project(sources: ISources): ISinks {
 
   const pause$ = sources.DOM.select(".pause").events("click");
 
-  const playing$ = xs.merge(
-    play$.mapTo(true),
-    pause$.mapTo(false),
-    xs.of(false)
-  );
+  const playing$ = xs
+    .merge(play$.mapTo(true), pause$.mapTo(false))
+    .startWith(false)
+    .remember();
 
   const animationFrame$ = sources.Time.animationFrames();
 
@@ -698,7 +730,7 @@ function Project(sources: ISources): ISinks {
           ].position = add(move.position, project.dragOffset || { x: 0, y: 0 });
         }
 
-        return project;
+        return { ...project };
       };
     });
 
@@ -709,16 +741,17 @@ function Project(sources: ISources): ISinks {
   const selectActorInScenario$ = mouseDownWithPosition$.map(
     ([actorId, mousePosition]: [string, Vector]) => {
       return function(project: Project): Project {
-        const actorPosition = (activeScenario(project) as any).actors[
-          actorId
-        ][0].position;
+        const frame = actorPosition(
+          (activeScenario(project) as any).actors[actorId],
+          project.currentFrame
+        );
 
         return {
           ...project,
 
           selectedScenarioObject: actorId,
 
-          dragOffset: subtract(actorPosition, mousePosition)
+          dragOffset: subtract(frame.position, mousePosition)
         };
       };
     }
@@ -786,14 +819,14 @@ function Project(sources: ISources): ISinks {
   });
 
   const timeBarElement$ = sources.DOM
-    .select('.timebar')
-  .elements()
+    .select(".timebar")
+    .elements()
     .filter((elements: Element[]) => elements.length > 0)
     .map((elements: Element[]) => elements[0]);
 
   const changeTime$ = sources.DOM
-    .select('.timebar')
-    .events('mousedown')
+    .select(".timebar")
+    .events("mousedown")
     .map(mousePositionFromEvent)
     .compose(sampleCombine(timeBarElement$))
     .map(([position, element]) => mousePositionOnSvg(position, element))
@@ -802,13 +835,13 @@ function Project(sources: ISources): ISinks {
 
       const frame = Math.max(0, Math.floor(8 * 60 * x));
 
-      return function (project: Project): Project {
+      return function(project: Project): Project {
         return {
           ...project,
 
           currentFrame: frame
-        }
-      }
+        };
+      };
     });
 
   const changeScenarioName$ = scenarioNameComponent.nameChange$.map(
@@ -878,6 +911,7 @@ function Project(sources: ISources): ISinks {
   );
 
   const reducer$ = xs.merge(
+    sources.initialState$.take(1).map(project => () => project),
     changeName$,
     addScenario$,
     selectScenario$,
@@ -893,15 +927,10 @@ function Project(sources: ISources): ISinks {
     changeTime$
   );
 
-  const update$ = project$
-    .map(project =>
-      reducer$.map((reducer: (project: Project) => Project) =>
-        $update("projects", reducer(project))
-      )
-    )
-    .flatten();
-
   return {
+    onion: reducer$,
+    state$: project$,
+
     DOM: xs
       .combine(
         project$,
@@ -939,9 +968,7 @@ function Project(sources: ISources): ISinks {
                 : "Select an actor to see details"
             ])
           ])
-      ),
-
-    DB: xs.merge(initialPersistence$, update$)
+      )
   };
 }
 
@@ -965,7 +992,7 @@ function view(child: VNode): VNode {
 function main(sources: ISources): ISinks {
   const page$ = sources.Router.define({
     "/": Home,
-    "/project/:id": (id: string) => extendSources(Project, { id })
+    "/project/:id": (id: string) => extendSources(ProjectWithDB, { id })
   });
 
   const newProject$ = sources.DOM

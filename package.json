@@ -33,6 +33,7 @@
     "@types/random-js": "^1.0.30",
     "@types/uuid": "^3.4.0",
     "cycle-idb": "0.0.11",
+    "cycle-onionify": "^3.3.0",
     "cyclic-router": "^5.1.2",
     "random-js": "^1.0.8",
     "switch-path": "^1.2.0",
