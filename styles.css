@@ -1,0 +1,118 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: PT Sans, sans-serif;
+
+  background: #111;
+  color: #EEE;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: hidden;
+}
+
+:root {
+  --nav-height: 20px;
+  --display-height: 100% - var(--nav-height);
+}
+
+.helix-pi {
+  height: 100%;
+}
+
+.welcome {
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+  font-size: 2em;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: skyblue;
+}
+
+a:hover {
+  color: yellow;
+}
+
+.nav-bar {
+  background: #222;
+  height: 20px;
+}
+
+.project {
+  display: flex;
+  justify-content: space-between;
+  height: calc(100% - 20px);
+}
+
+.project .sidebar {
+  flex-grow: 1;
+  background: #333;
+  height: 100%;
+  padding: 10px;
+}
+
+.project-name {
+  font-size: 1.3em;
+}
+
+.sidebar-title {
+  font-size: 1.1em;
+  padding: 15px 0px 1px 0px;
+}
+
+.sidebar button {
+  margin: 3px 0px;
+}
+
+.actor-panel {
+  justify-content: space-between;
+  height: calc(100% - 20px); // TODO - why?
+}
+
+.scenario {
+}
+
+.simuation {
+  border: 1px solid #888;
+}
+
+.simulation-container {
+  
+}
+
+.scenario-name {
+  position: absolute;
+  margin: 5px;
+}
+
+input, button {
+  font-size: 1em;
+}
+
+.timebar {
+  height: 98px;
+  background: #333;
+}
+
+.timebar .simulation {
+  border: 1px solid white;
+}
