@@ -268,7 +268,7 @@ describe("Helix Pi", () => {
       ]
     };
 
-    const seed = 42;
+    const seed = 43;
     const output = helixPi(input, seed);
 
     const simulationResult = simulate(input, input.scenarios[0], output, {

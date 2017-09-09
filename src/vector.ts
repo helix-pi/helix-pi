@@ -24,6 +24,10 @@ function multiply (v: Vector, n: number): Vector {
   };
 }
 
+function divide (v: Vector, n: number): Vector {
+  return multiply(v, 1 / n);
+}
+
 function normalize (v: Vector): Vector {
   const {x, y} = v;
 
@@ -45,12 +49,12 @@ function distance (v: Vector): number {
   return Math.abs(Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)));
 }
 
-
 export {
   Vector,
   add,
   subtract,
   multiply,
+  divide,
   distance,
   normalize
 }

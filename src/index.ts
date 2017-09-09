@@ -233,8 +233,12 @@ type BestFitness = { [key: string]: number };
 type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
 
 export function helixPi(input: Input, seed: number): Output {
+  if (input.actors.length === 0) {
+    return {entities: {}};
+  }
+
   const generationSize = 500;
-  const generationCount = 3000000;
+  const generationCount = 50;
   const random = new Random(Random.engines.mt19937().seed(seed));
   // Given an array of actor names
   // And a collection of scenarios
@@ -337,8 +341,9 @@ export function helixPi(input: Input, seed: number): Output {
   const superBestEntities = allBestEntities.sort((a, b) => errorLevels[a.id] - errorLevels[b.id]);
    */
 
-  const bestEntities = Object.keys(allBestEntities.keith).map(
-    key => allBestEntities.keith[key][1]
+  const onlyActor = input.actors[0];
+  const bestEntities = Object.keys(allBestEntities[onlyActor]).map(
+    key => allBestEntities[onlyActor][key][0]
   );
 
   const entity = {
@@ -349,7 +354,7 @@ export function helixPi(input: Input, seed: number): Output {
 
   return {
     entities: {
-      keith: entity
+      [onlyActor]: entity
     }
   };
 }

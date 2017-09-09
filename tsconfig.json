@@ -15,6 +15,7 @@
   "include": [
     "src/**/*.ts",
     "test/**/*.ts",
-    "cycle-idb.d.ts"
+    "cycle-idb.d.ts",
+    "webworkify.d.ts"
   ]
 }

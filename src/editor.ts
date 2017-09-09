@@ -16,15 +16,18 @@ import isolate from "@cycle/isolate";
 import makeIDBDriver, { $add, $update } from "cycle-idb";
 import onionify, { StateSource } from "cycle-onionify";
 import { timeDriver, TimeSource } from "@cycle/time";
-import { run } from "@cycle/run";
 import { routerify, RouterSource, RouterSink } from "cyclic-router";
+import { run } from "@cycle/run";
+import { makeWebWorkerDriver } from 'cycle-webworker';
 import switchPath from "switch-path";
 import * as uuid from "uuid";
+import * as work from "webworkify";
 import xs, { Stream } from "xstream";
 import sampleCombine from "xstream/extra/sampleCombine";
 
 import { Vector, add, subtract } from "./vector";
-import { Scenario, ActorFrame } from "./index";
+import { Scenario, ActorFrame, Input, Output } from "./index";
+import { tweenFrames } from "./tween-frames";
 
 interface Project {
   id: string;
@@ -56,12 +59,42 @@ interface ISources {
   Router: RouterSource;
   DB: any;
   id?: string;
+  HelixPi: Stream<Output>;
 }
 
 interface ISinks {
   DOM: Stream<VNode>;
   Router?: RouterSink;
   DB?: any;
+  HelixPi?: Stream<Input>;
+}
+
+function transformValues<A, B>(obj: {[k: string]: A}, f: (a: A) => B): {[k: string]: B} {
+  const out: {[k: string]: B} = {};
+
+  for (let key of Object.keys(obj)) {
+    out[key] = f(obj[key]);
+  }
+
+  return out;
+}
+
+function tweenFramesInScenario(scenario: Scenario): Scenario {
+  return {
+    ...scenario,
+
+    actors: transformValues(scenario.actors, tweenFrames)
+  }
+}
+
+function projectToHelixPiInput(project: Project): Input {
+  project
+
+  return {
+    keys: ['w', 'a', 's', 'd'], // TODO - don't hardcode this
+    scenarios: project.scenarios.map(tweenFramesInScenario),
+    actors: project.actors.map(actor => actor.id)
+  }
 }
 
 function homeView(projects: Project[]): VNode {
@@ -610,9 +643,9 @@ function ProjectWithDB(sources: ISources) {
   );
 
   return {
-    DB: xs.merge(initialPersistence$, updatePersistence$),
+    ...project,
 
-    DOM: project.DOM
+    DB: xs.merge(initialPersistence$, updatePersistence$)
   };
 }
 
@@ -927,9 +960,13 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     changeTime$
   );
 
+  const helixPiInput$ = project$.compose(sources.Time.debounce(300)).map(projectToHelixPiInput);
+  const output$ = sources.HelixPi.startWith({entities: {}});
+
   return {
     onion: reducer$,
     state$: project$,
+    HelixPi: helixPiInput$,
 
     DOM: xs
       .combine(
@@ -937,10 +974,11 @@ function Project(sources: IOnionifySources): IOnionifySinks {
         playing$,
         nameComponent.DOM,
         scenarioNameComponent.DOM.startWith(div()),
-        actorPanel.DOM.startWith(div())
+        actorPanel.DOM.startWith(div()),
+        output$
       )
       .map(
-        ([project, playing, nameVtree, scenarioNameVtree, actorPanelVtree]) =>
+        ([project, playing, nameVtree, scenarioNameVtree, actorPanelVtree, output]) =>
           div(".project", [
             div(".actor-sidebar.sidebar.flex-column", [
               nameVtree,
@@ -950,7 +988,9 @@ function Project(sources: IOnionifySources): IOnionifySinks {
 
               div(".sidebar-title", "Actors"),
               div(".actors", project.actors.map(renderActorButton)),
-              button(".add-actor", "Add actor")
+              button(".add-actor", "Add actor"),
+
+              JSON.stringify(output, null, 2)
             ]),
             div(".preview", [
               project.selectedScenarioId
@@ -1022,6 +1062,8 @@ function main(sources: ISources): ISinks {
 
   const componentVtree$ = component$.map((c: ISinks) => c.DOM).flatten();
 
+  const helixPi$ = component$.map((c: ISinks) => c.HelixPi || xs.empty()).flatten();
+
   return {
     DOM: componentVtree$.map(view),
 
@@ -1031,7 +1073,9 @@ function main(sources: ISources): ISinks {
       home$.mapTo(`/`),
       newProject$.mapTo(`/project/${uuid.v4()}`),
       gotoProject$
-    )
+    ),
+
+    HelixPi: helixPi$
   };
 }
 
@@ -1039,6 +1083,16 @@ const mainWithRouter = routerify(main, switchPath, {
   historyName: "History",
   routerName: "Router"
 });
+
+function helixPiDriver(sink$: Stream<Input>) {
+  const worker = work(require("./worker"));
+
+  const driver = makeWebWorkerDriver(worker);
+
+  const stringifiedSink$ = sink$.map(event => JSON.stringify(event))
+
+  return driver(stringifiedSink$).map(source => JSON.parse(source));
+}
 
 const drivers = {
   DOM: makeDOMDriver(document.body),
@@ -1049,7 +1103,8 @@ const drivers = {
       keyPath: "id"
     });
     projectsStore.createIndex("id", "id");
-  })
+  }),
+  HelixPi: helixPiDriver
 };
 
 run(mainWithRouter, drivers);
