@@ -8,6 +8,7 @@ import {
   a,
   h,
   button,
+  pre,
   DOMSource,
   VNode
 } from "@cycle/dom";
@@ -18,7 +19,7 @@ import onionify, { StateSource } from "cycle-onionify";
 import { timeDriver, TimeSource } from "@cycle/time";
 import { routerify, RouterSource, RouterSink } from "cyclic-router";
 import { run } from "@cycle/run";
-import { makeWebWorkerDriver } from 'cycle-webworker';
+import { makeWebWorkerDriver } from "cycle-webworker";
 import switchPath from "switch-path";
 import * as uuid from "uuid";
 import * as work from "webworkify";
@@ -69,8 +70,11 @@ interface ISinks {
   HelixPi?: Stream<Input>;
 }
 
-function transformValues<A, B>(obj: {[k: string]: A}, f: (a: A) => B): {[k: string]: B} {
-  const out: {[k: string]: B} = {};
+function transformValues<A, B>(
+  obj: { [k: string]: A },
+  f: (a: A) => B
+): { [k: string]: B } {
+  const out: { [k: string]: B } = {};
 
   for (let key of Object.keys(obj)) {
     out[key] = f(obj[key]);
@@ -84,17 +88,17 @@ function tweenFramesInScenario(scenario: Scenario): Scenario {
     ...scenario,
 
     actors: transformValues(scenario.actors, tweenFrames)
-  }
+  };
 }
 
 function projectToHelixPiInput(project: Project): Input {
-  project
+  project;
 
   return {
-    keys: ['w', 'a', 's', 'd'], // TODO - don't hardcode this
+    keys: ["w", "a", "s", "d"], // TODO - don't hardcode this
     scenarios: project.scenarios.map(tweenFramesInScenario),
     actors: project.actors.map(actor => actor.id)
-  }
+  };
 }
 
 function homeView(projects: Project[]): VNode {
@@ -236,7 +240,21 @@ function renderActorButton(actor: Actor): VNode {
   ]);
 }
 
-function renderPlayPauseControls(playing: boolean) {
+function renderRecordControls(recording: boolean): VNode {
+  if (recording) {
+    return h("circle", {
+      class: { "stop-recording": true },
+      attrs: { cx: 25, cy: 25, r: 15, fill: "darkred" }
+    });
+  }
+
+  return h("circle", {
+    class: { record: true },
+    attrs: { cx: 25, cy: 25, r: 15, fill: "red" }
+  });
+}
+
+function renderPlayPauseControls(playing: boolean): VNode {
   if (!playing) {
     return h("polygon", {
       class: { play: true },
@@ -269,7 +287,8 @@ function renderPlayPauseControls(playing: boolean) {
 function renderTimeBar(
   project: Project,
   scenario: Scenario,
-  playing: boolean
+  playing: boolean,
+  recording: boolean
 ): VNode {
   const previewFrames = new Array(10).fill(0);
 
@@ -288,9 +307,7 @@ function renderTimeBar(
       attrs: { cx: 25, cy: 25, r: 15, fill: "darkred" }
     }),
 
-    h("circle", {
-      attrs: { cx: 25, cy: 25, r: 15, fill: "red" }
-    }),
+    renderRecordControls(recording),
 
     renderPlayPauseControls(playing),
 
@@ -312,7 +329,16 @@ function renderTimeBar(
 
     ...previewFrames.map((_, index) =>
       h("g", [
-        renderSimulation(project, scenario, index * 60, false, true, index),
+        renderSimulation(
+          project,
+          scenario,
+          false,
+          false,
+          index * 60,
+          false,
+          true,
+          index
+        ),
         index > 0
           ? h(
               "text",
@@ -361,6 +387,8 @@ function last<T>(array: T[]): T {
 function renderSimulation(
   project: Project,
   scenario: Scenario,
+  playing: boolean,
+  recording: boolean,
   frame: number,
   grid = true,
   mini = false,
@@ -423,7 +451,8 @@ function renderSimulation(
         const actor = project.actors.find(actor => actor.id === id) as Actor;
         const frames = scenario.actors[id];
         const actorFrame = actorPosition(frames, frame);
-        const selected = actor.id === project.selectedScenarioObject;
+        const selected =
+          (!playing || recording) && actor.id === project.selectedScenarioObject;
 
         return renderActor(
           actor,
@@ -444,15 +473,16 @@ function renderScenario(
   project: Project,
   scenario: Scenario,
   playing: boolean,
+  recording: boolean,
   scenarioNameVtree: VNode
 ): VNode {
   return div(".scenario.flex-column", [
     div(".simulation-container", [
       div(".scenario-name", [scenarioNameVtree]),
-      renderSimulation(project, scenario, project.currentFrame)
+      renderSimulation(project, scenario, playing, recording, project.currentFrame)
     ]),
 
-    renderTimeBar(project, scenario, playing)
+    renderTimeBar(project, scenario, playing, recording)
   ]);
 }
 
@@ -701,12 +731,23 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     .filter((elements: Element[]) => elements.length > 0)
     .map((elements: Element[]) => elements[0]);
 
-  const play$ = sources.DOM.select(".play").events("click");
+  const record$ = sources.DOM.select(".record").events("click");
+  const stopRecording$ = sources.DOM.select(".stop-recording").events("click");
 
+  const recording$ = xs
+    .merge(
+      record$.mapTo(true).debug("record.mapTo(true)"),
+      stopRecording$.mapTo(false)
+    )
+    .startWith(false)
+    .remember()
+    .debug("recording");
+
+  const play$ = sources.DOM.select(".play").events("click");
   const pause$ = sources.DOM.select(".pause").events("click");
 
   const playing$ = xs
-    .merge(play$.mapTo(true), pause$.mapTo(false))
+    .merge(recording$, play$.mapTo(true), pause$.mapTo(false))
     .startWith(false)
     .remember();
 
@@ -743,14 +784,24 @@ function Project(sources: IOnionifySources): IOnionifySinks {
 
   const moveActor$ = actorMouseDown$
     .map(actorId =>
-      simulationMousePosition$
-        .map(position => ({ actorId, position }))
+      xs
+        .combine(simulationMousePosition$, playing$, recording$)
+        .map(([position, playing, recording]) => ({
+          actorId,
+          position,
+          playing,
+          recording
+        }))
         .endWhen(mouseUp$)
     )
     .flatten()
     .map(move => {
       return function(project: Project): Project {
         const scenario = activeScenario(project);
+
+        if (move.playing && !move.recording) {
+          return project;
+        }
 
         if (!(scenario as any).actors[move.actorId][project.currentFrame]) {
           (scenario as any).actors[move.actorId][project.currentFrame] = {
@@ -799,6 +850,8 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       return {
         ...project,
 
+        currentFrame: 0,
+
         selectedScenarioId: scenario.id,
 
         scenarios: project.scenarios.concat(scenario)
@@ -825,6 +878,9 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       return {
         ...project,
 
+
+        currentFrame: 0, 
+      
         selectedScenarioId: (ev.currentTarget as any).dataset.id
       };
     });
@@ -869,6 +925,10 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       const frame = Math.max(0, Math.floor(8 * 60 * x));
 
       return function(project: Project): Project {
+        if (position.x < 50) {
+          return project;
+        }
+
         return {
           ...project,
 
@@ -960,8 +1020,10 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     changeTime$
   );
 
-  const helixPiInput$ = project$.compose(sources.Time.debounce(300)).map(projectToHelixPiInput);
-  const output$ = sources.HelixPi.startWith({entities: {}});
+  const helixPiInput$ = project$
+    .compose(sources.Time.debounce(300))
+    .map(projectToHelixPiInput);
+  const output$ = sources.HelixPi.startWith({ entities: {} });
 
   return {
     onion: reducer$,
@@ -972,13 +1034,24 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       .combine(
         project$,
         playing$,
+        recording$.compose(sources.Time.delay(1)), // TODO - remove, here because otherwise stop-recording gets clicked in the same go???
         nameComponent.DOM,
         scenarioNameComponent.DOM.startWith(div()),
         actorPanel.DOM.startWith(div()),
         output$
       )
       .map(
-        ([project, playing, nameVtree, scenarioNameVtree, actorPanelVtree, output]) =>
+        (
+          [
+            project,
+            playing,
+            recording,
+            nameVtree,
+            scenarioNameVtree,
+            actorPanelVtree,
+            output
+          ]
+        ) =>
           div(".project", [
             div(".actor-sidebar.sidebar.flex-column", [
               nameVtree,
@@ -990,7 +1063,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               div(".actors", project.actors.map(renderActorButton)),
               button(".add-actor", "Add actor"),
 
-              JSON.stringify(output, null, 2)
+              pre(JSON.stringify(output, null, 2))
             ]),
             div(".preview", [
               project.selectedScenarioId
@@ -998,6 +1071,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
                     project,
                     activeScenario(project) as Scenario,
                     playing,
+                    recording,
                     scenarioNameVtree as VNode
                   )
                 : "No scenario selected"
@@ -1062,7 +1136,9 @@ function main(sources: ISources): ISinks {
 
   const componentVtree$ = component$.map((c: ISinks) => c.DOM).flatten();
 
-  const helixPi$ = component$.map((c: ISinks) => c.HelixPi || xs.empty()).flatten();
+  const helixPi$ = component$
+    .map((c: ISinks) => c.HelixPi || xs.empty())
+    .flatten();
 
   return {
     DOM: componentVtree$.map(view),
@@ -1089,7 +1165,7 @@ function helixPiDriver(sink$: Stream<Input>) {
 
   const driver = makeWebWorkerDriver(worker);
 
-  const stringifiedSink$ = sink$.map(event => JSON.stringify(event))
+  const stringifiedSink$ = sink$.map(event => JSON.stringify(event));
 
   return driver(stringifiedSink$).map(source => JSON.parse(source));
 }
