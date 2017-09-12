@@ -6,7 +6,7 @@ module.exports = function(self: Worker) {
 
     console.log('input', input);
 
-    const output = helixPi(input, Math.random());
+    const output = helixPi(input, Math.random() * 10000);
 
     console.log('output', output);
 

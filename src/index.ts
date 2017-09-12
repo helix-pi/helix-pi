@@ -164,13 +164,13 @@ function makeArray<T>(n: number, f: () => T): Array<T> {
   return array;
 }
 
-function makeChildren(random: Random, n: number, depth: number): Entity[] {
+function makeChildren(random: Random, n: number, keys: string[], depth: number): Entity[] {
   return makeArray(n, () =>
-    generateEntity(random.integer(MIN_SEED, MAX_SEED), depth + 1)
+    generateEntity(random.integer(MIN_SEED, MAX_SEED), keys, depth + 1)
   );
 }
 
-function generateEntity(seed: number, depth = 0): Entity {
+function generateEntity(seed: number, keys: string[], depth = 0): Entity {
   const random = new Random(Random.engines.mt19937().seed(seed));
 
   const isLeaf = depth > 2 || random.bool();
@@ -196,13 +196,13 @@ function generateEntity(seed: number, depth = 0): Entity {
     const command = (random as any).pick(possibleCommands) as any;
 
     if (command === "inputConditional") {
-      const key = (random as any).pick(["Left", "Right"]);
+      const key = (random as any).pick(keys);
 
       return {
         type: command,
         key,
         id: seed.toString(),
-        children: makeChildren(random, 2, depth)
+        children: makeChildren(random, 2, keys, depth)
       };
     }
 
@@ -212,6 +212,7 @@ function generateEntity(seed: number, depth = 0): Entity {
       children: makeChildren(
         random,
         random.integer(2, MAX_SEQUENCE_CHILD_COUNT),
+        keys,
         depth
       )
     };
@@ -219,11 +220,11 @@ function generateEntity(seed: number, depth = 0): Entity {
 }
 
 // TODO - determinism
-function generateEntities(random: Random, generationSize: number): Entity[] {
+function generateEntities(random: Random, generationSize: number, keys: string[]): Entity[] {
   const entities = [];
 
   while (entities.length < generationSize) {
-    entities.push(generateEntity(random.integer(MIN_SEED, MAX_SEED)));
+    entities.push(generateEntity(random.integer(MIN_SEED, MAX_SEED), keys));
   }
 
   return entities;
@@ -238,7 +239,7 @@ export function helixPi(input: Input, seed: number): Output {
   }
 
   const generationSize = 500;
-  const generationCount = 50;
+  const generationCount = 5;
   const random = new Random(Random.engines.mt19937().seed(seed));
   // Given an array of actor names
   // And a collection of scenarios
@@ -260,12 +261,13 @@ export function helixPi(input: Input, seed: number): Output {
   }
 
   while (generation < generationCount && highestFitness(bestFitness) > 100) {
+    console.log(generation);
     // For each scenario
     input.scenarios.forEach((scenario, index) => {
       //  For each actor
       for (let actor of Object.keys(scenario.actors)) {
         //   Generate N possible entities
-        const entities = generateEntities(random, generationSize);
+        const entities = generateEntities(random, generationSize, input.keys);
         //   Simulate them in this scenario
 
         //   Assign them each an error level based on how far they are from the desired position at each frame

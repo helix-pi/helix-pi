@@ -58,6 +58,7 @@ a:hover {
 }
 
 .project {
+  background: #333;
   display: flex;
   justify-content: space-between;
   height: calc(100% - 20px);
@@ -92,10 +93,12 @@ a:hover {
 }
 
 .simuation {
+  background: #111;
   border: 1px solid #888;
 }
 
 .simulation-container {
+  background: #111;
   
 }
 

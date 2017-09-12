@@ -7,8 +7,8 @@ import {
   input,
   a,
   h,
-  button,
   pre,
+  button,
   DOMSource,
   VNode
 } from "@cycle/dom";
@@ -26,9 +26,11 @@ import * as work from "webworkify";
 import xs, { Stream } from "xstream";
 import sampleCombine from "xstream/extra/sampleCombine";
 
-import { Vector, add, subtract } from "./vector";
 import { Scenario, ActorFrame, Input, Output } from "./index";
+import { codeToString } from "./code-to-string";
+import { inputEventsToRanges, InputRange } from "./input-events-to-ranges";
 import { tweenFrames } from "./tween-frames";
+import { Vector, add, subtract } from "./vector";
 
 interface Project {
   id: string;
@@ -36,6 +38,8 @@ interface Project {
   selectedScenarioId: null | string;
   selectedActorId: null | string;
   selectedScenarioObject: null | string;
+  lastInput: string | null;
+  keys: string[];
 
   currentFrame: number;
 
@@ -95,7 +99,7 @@ function projectToHelixPiInput(project: Project): Input {
   project;
 
   return {
-    keys: ["w", "a", "s", "d"], // TODO - don't hardcode this
+    keys: project.keys,
     scenarios: project.scenarios.map(tweenFramesInScenario),
     actors: project.actors.map(actor => actor.id)
   };
@@ -195,7 +199,7 @@ function ProjectName(sources: IProjectNameSources): IProjectNameSinks {
 
 function makeActor(): Actor {
   return {
-    id: uuid.v4(),
+    id: uuid.v4().split("-")[0],
     name: "Untitled actor",
     width: 100,
     height: 100,
@@ -208,7 +212,7 @@ function makeScenario(): Scenario {
     name: "Untitled scenario",
     input: {},
     actors: {},
-    id: uuid.v4()
+    id: uuid.v4().split("-")[0]
   };
 }
 
@@ -224,7 +228,9 @@ function makeProject(id: string): Project {
     selectedActorId: null,
     selectedScenarioObject: null,
     dragOffset: null,
-    currentFrame: 0
+    currentFrame: 0,
+    lastInput: null,
+    keys: ["w", "a", "s", "d"] // TODO - don't hardcode this
   };
 }
 
@@ -284,6 +290,72 @@ function renderPlayPauseControls(playing: boolean): VNode {
   ]);
 }
 
+function renderInputRange(
+  inputRanges: { key: string; input: InputRange[] },
+  i: number
+): VNode {
+  const height = 10;
+  return h("g", [
+    h(
+      "text",
+      {
+        attrs: {
+          x: 30,
+          y: i * height + 12,
+          stroke: "white",
+          fill: "white",
+          "font-size": "10pt"
+        }
+      },
+      inputRanges.key
+    ),
+
+    ...inputRanges.input.map(inputRange =>
+      h("rect", {
+        attrs: {
+          x: 50 + inputRange.from / 60 * 93.3,
+          y: i * height + 9,
+          width:
+            50 + inputRange.to / 60 * 93.3 - (50 + inputRange.from / 60 * 93.3),
+          height,
+          fill: "yellow",
+          stroke: "gold"
+        }
+      })
+    )
+  ]);
+}
+
+function renderInput(project: Project, scenario: Scenario): VNode {
+  project;
+  scenario;
+  const controlWidth = 50;
+
+  const inputRanges = inputEventsToRanges(scenario.input, project.keys);
+
+  const keys = Object.keys(inputRanges).sort();
+
+  const ranges = keys.map(key => ({ key, input: inputRanges[key] }));
+
+  return h(
+    "svg",
+    { attrs: { width: 800, height: 50 }, class: { "input-controls": true } },
+    [
+      h("rect", {
+        attrs: {
+          x: controlWidth,
+          y: 0,
+          width: 750,
+          height: 50,
+          fill: "#181818"
+        }
+      }),
+
+      ...ranges.map(renderInputRange)
+    ]
+  );
+}
+
 function renderTimeBar(
   project: Project,
   scenario: Scenario,
@@ -302,82 +374,92 @@ function renderTimeBar(
 
   const frameMarkerX = controlWidth + frame / 60 * previewWidth;
 
-  return h("svg", { class: { timebar: true } }, [
-    h("circle", {
-      attrs: { cx: 25, cy: 25, r: 15, fill: "darkred" }
-    }),
+  return h(
+    "svg",
+    { class: { timebar: true }, attrs: { width: 800, height: 90 } },
+    [
+      h("circle", {
+        attrs: { cx: 25, cy: 25, r: 15, fill: "darkred" }
+      }),
 
-    renderRecordControls(recording),
+      renderRecordControls(recording),
 
-    renderPlayPauseControls(playing),
+      renderPlayPauseControls(playing),
 
-    h("rect", {
-      attrs: { x: controlWidth, y: 5, width: 750, height: 85, fill: "#181818" }
-    }),
-
-    ...lines.map((_, index) =>
-      h("line", {
+      h("rect", {
         attrs: {
-          x1: controlWidth + index * previewWidth / 10,
-          y1: 75,
-          x2: controlWidth + index * previewWidth / 10,
-          y2: 75 + (index % 10 === 0 ? 5 : 3),
-          stroke: "#555"
+          x: controlWidth,
+          y: 5,
+          width: 750,
+          height: 85,
+          fill: "#181818"
         }
-      })
-    ),
+      }),
 
-    ...previewFrames.map((_, index) =>
-      h("g", [
-        renderSimulation(
-          project,
-          scenario,
-          false,
-          false,
-          index * 60,
-          false,
-          true,
-          index
-        ),
-        index > 0
-          ? h(
-              "text",
-              {
-                attrs: {
-                  x: controlWidth + index * 93.3 - 3,
-                  y: 89,
-                  fill: "#888",
-                  stroke: "#888",
-                  "font-size": "8pt"
-                }
-              },
-              `${index}s`
-            )
-          : "",
-
-        h("rect", {
+      ...lines.map((_, index) =>
+        h("line", {
           attrs: {
-            x: controlWidth + index * 93.3,
-            y: 5,
-            width: previewWidth,
-            height: 70,
-            stroke: "#555",
-            fill: "none"
+            x1: controlWidth + index * previewWidth / 10,
+            y1: 75,
+            x2: controlWidth + index * previewWidth / 10,
+            y2: 75 + (index % 10 === 0 ? 5 : 3),
+            stroke: "#555"
           }
         })
-      ])
-    ),
+      ),
 
-    h("line", {
-      attrs: {
-        x1: frameMarkerX,
-        y1: 5,
-        x2: frameMarkerX,
-        y2: 90,
-        stroke: "white"
-      }
-    })
-  ]);
+      ...previewFrames.map((_, index) =>
+        h("g", [
+          renderSimulation(
+            project,
+            scenario,
+            false,
+            false,
+            index * 60,
+            false,
+            true,
+            index
+          ),
+          index > 0
+            ? h(
+                "text",
+                {
+                  attrs: {
+                    x: controlWidth + index * 93.3 - 3,
+                    y: 89,
+                    fill: "#888",
+                    stroke: "#888",
+                    "font-size": "8pt"
+                  }
+                },
+                `${index}s`
+              )
+            : "",
+
+          h("rect", {
+            attrs: {
+              x: controlWidth + index * 93.3,
+              y: 5,
+              width: previewWidth,
+              height: 70,
+              stroke: "#555",
+              fill: "none"
+            }
+          })
+        ])
+      ),
+
+      h("line", {
+        attrs: {
+          x1: frameMarkerX,
+          y1: 5,
+          x2: frameMarkerX,
+          y2: 90,
+          stroke: "white"
+        }
+      })
+    ]
+  );
 }
 
 function last<T>(array: T[]): T {
@@ -416,7 +498,7 @@ function renderSimulation(
             x1: index * 50,
             y1: 0,
             x2: index * 50,
-            y2: 600,
+            y2: 550,
             stroke: "#333"
           }
         })
@@ -425,18 +507,18 @@ function renderSimulation(
   }
 
   let width = 800;
-  let height = 600;
+  let height = 550;
   let x = 0;
   let y = 0;
 
   if (mini) {
     height = 70;
-    width = width * (height / 600);
+    width = width * (height / 550);
     y = 5;
     x = 50 + offsetIndex * width;
   }
 
-  const viewBox = `0 0 800 600`;
+  const viewBox = `0 0 800 550`;
 
   return h(
     "svg",
@@ -452,7 +534,8 @@ function renderSimulation(
         const frames = scenario.actors[id];
         const actorFrame = actorPosition(frames, frame);
         const selected =
-          (!playing || recording) && actor.id === project.selectedScenarioObject;
+          (!playing || recording) &&
+          actor.id === project.selectedScenarioObject;
 
         return renderActor(
           actor,
@@ -479,8 +562,16 @@ function renderScenario(
   return div(".scenario.flex-column", [
     div(".simulation-container", [
       div(".scenario-name", [scenarioNameVtree]),
-      renderSimulation(project, scenario, playing, recording, project.currentFrame)
+      renderSimulation(
+        project,
+        scenario,
+        playing,
+        recording,
+        project.currentFrame
+      )
     ]),
+
+    renderInput(project, scenario),
 
     renderTimeBar(project, scenario, playing, recording)
   ]);
@@ -694,6 +785,78 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     })
   );
 
+  const record$ = sources.DOM.select(".record").events("click");
+  const stopRecording$ = sources.DOM.select(".stop-recording").events("click");
+
+  const recording$ = xs
+    .merge(record$.mapTo(true), stopRecording$.mapTo(false))
+    .startWith(false)
+    .remember();
+
+  const play$ = sources.DOM.select(".play").events("click");
+  const pause$ = sources.DOM.select(".pause").events("click");
+
+  const playing$ = xs
+    .merge(recording$, play$.mapTo(true), pause$.mapTo(false))
+    .startWith(false)
+    .remember();
+
+  const keydown$ = sources.DOM
+    .select("document")
+    .events("keydown")
+    .map((ev: KeyboardEvent) => ev.key.toLowerCase());
+
+  const keyup$ = sources.DOM
+    .select("document")
+    .events("keyup")
+    .map((ev: KeyboardEvent) => ev.key.toLowerCase());
+
+  const recordKeydown$ = keydown$
+    .compose(sampleCombine(recording$))
+    .map(([key, recording]) => {
+      return function(project: Project): Project {
+        if (!recording || project.lastInput === key) {
+          return project;
+        }
+
+        if (project.keys.indexOf(key) === -1) {
+          return project;
+        }
+
+        const scenario = activeScenario(project) as Scenario;
+
+        scenario.input[project.currentFrame] =
+          scenario.input[project.currentFrame] || [];
+
+        scenario.input[project.currentFrame].push({ type: "keydown", key });
+
+        project.lastInput = key;
+
+        return project;
+      };
+    });
+
+  const recordKeyup$ = keyup$
+    .compose(sampleCombine(recording$))
+    .map(([key, recording]) => {
+      return function(project: Project): Project {
+        if (!recording) {
+          return project;
+        }
+
+        const scenario = activeScenario(project) as Scenario;
+
+        scenario.input[project.currentFrame] =
+          scenario.input[project.currentFrame] || [];
+
+        scenario.input[project.currentFrame].push({ type: "keyup", key });
+
+        project.lastInput = null;
+
+        return project;
+      };
+    });
+
   const actorMouseDown$ = sources.DOM
     .select(".simulation.main .actor")
     .events("mousedown")
@@ -730,26 +893,6 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     .elements()
     .filter((elements: Element[]) => elements.length > 0)
     .map((elements: Element[]) => elements[0]);
-
-  const record$ = sources.DOM.select(".record").events("click");
-  const stopRecording$ = sources.DOM.select(".stop-recording").events("click");
-
-  const recording$ = xs
-    .merge(
-      record$.mapTo(true).debug("record.mapTo(true)"),
-      stopRecording$.mapTo(false)
-    )
-    .startWith(false)
-    .remember()
-    .debug("recording");
-
-  const play$ = sources.DOM.select(".play").events("click");
-  const pause$ = sources.DOM.select(".pause").events("click");
-
-  const playing$ = xs
-    .merge(recording$, play$.mapTo(true), pause$.mapTo(false))
-    .startWith(false)
-    .remember();
 
   const animationFrame$ = sources.Time.animationFrames();
 
@@ -878,9 +1021,8 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       return {
         ...project,
 
+        currentFrame: 0,
 
-        currentFrame: 0, 
-      
         selectedScenarioId: (ev.currentTarget as any).dataset.id
       };
     });
@@ -1017,7 +1159,9 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     clearActorSelection$,
     moveActor$,
     advanceFrame$,
-    changeTime$
+    changeTime$,
+    recordKeydown$,
+    recordKeyup$
   );
 
   const helixPiInput$ = project$
@@ -1063,7 +1207,11 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               div(".actors", project.actors.map(renderActorButton)),
               button(".add-actor", "Add actor"),
 
-              pre(JSON.stringify(output, null, 2))
+              pre(
+                Object.keys(output.entities)
+                  .map(key => codeToString(output.entities[key]))
+                  .join("\n")
+              )
             ]),
             div(".preview", [
               project.selectedScenarioId
