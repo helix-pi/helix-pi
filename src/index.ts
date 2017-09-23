@@ -31,6 +31,7 @@ export type Input = {
   keys: string[];
   scenarios: Scenario[];
   actors: string[];
+  results?: Output;
 };
 
 export type Output = {
@@ -219,7 +220,6 @@ function generateEntity(seed: number, keys: string[], depth = 0): Entity {
   }
 }
 
-// TODO - determinism
 function generateEntities(random: Random, generationSize: number, keys: string[]): Entity[] {
   const entities = [];
 
@@ -230,136 +230,10 @@ function generateEntities(random: Random, generationSize: number, keys: string[]
   return entities;
 }
 
-type BestFitness = { [key: string]: number };
-type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
-
-export function helixPi(input: Input, seed: number): Output {
-  if (input.actors.length === 0) {
-    return {entities: {}};
-  }
-
-  const generationSize = 500;
-  const generationCount = 5;
-  const random = new Random(Random.engines.mt19937().seed(seed));
-  // Given an array of actor names
-  // And a collection of scenarios
-  let allBestEntities: BestEntities = {};
-
-  for (let actor of input.actors) {
-    allBestEntities[actor] = {};
-  }
-
-  let generation = 0;
-  let bestFitness: BestFitness = {};
-
-  function highestFitness(bestFitness: BestFitness): number {
-    if (Object.keys(bestFitness).length === 0) {
-      return Infinity;
-    }
-
-    return Math.max(...Object.keys(bestFitness).map(key => bestFitness[key]));
-  }
-
-  while (generation < generationCount && highestFitness(bestFitness) > 100) {
-    console.log(generation);
-    // For each scenario
-    input.scenarios.forEach((scenario, index) => {
-      //  For each actor
-      for (let actor of Object.keys(scenario.actors)) {
-        //   Generate N possible entities
-        const entities = generateEntities(random, generationSize, input.keys);
-        //   Simulate them in this scenario
-
-        //   Assign them each an error level based on how far they are from the desired position at each frame
-        const errorLevels: EntityErrorLevels = {};
-
-        for (let entity of entities) {
-          errorLevels[entity.id] = simulateAndFindErrorLevel(
-            input,
-            entity,
-            scenario,
-            actor
-          );
-        }
-
-        const bestEntities = entities.sort(
-          (a, b) => errorLevels[a.id] - errorLevels[b.id]
-        );
-        const bestFitnessInGeneration = errorLevels[bestEntities[0].id];
-
-        bestFitness[index] = Math.min(
-          bestFitness[index] || Infinity,
-          bestFitnessInGeneration
-        );
-
-        allBestEntities[actor][index] = allBestEntities[actor][index] || [];
-
-        allBestEntities[actor][index].push(...bestEntities.slice(0, 2));
-
-        //   Breed the best entities, selecting proportionally weighted to their error level
-        //     Where breeding is defined as
-        //       Given two entities
-        //       Pick a location in each of their code trees
-        //       Swap the nodes at those positions
-        //       For some random inviduals, pick a node to mutate and then change it
-        //
-        //   Return a collection of entities composed of
-        //     the best entities from the previous
-        //     the bred children
-        //
-        //   Repeat until an entity with a near zero error level is found
-        //       or until we hit a maximum number of generations
-        //
-      }
-    });
-
-    generation++;
-  }
-  // Given all of the best entities for each scenario
-  // We want to breed entities that are the best at all scenarios
-  //
-  // Generate N possible entities + best entities from all scenarios
-  //
-  // Simulate them in each scenario
-  //
-  // Assign them an error level based on the error level for each scenario
-  //   Cumulative might work
-  //
-  // Breed them, following the above process
-  //
-  // Repeat this process until ideal entities are found for each actor
-  //  Or the max generations count is hit
-  //
-
-  /*
-  const errorLevels: EntityErrorLevels = {};
-
-  for (let entity of allBestEntities) {
-    errorLevels[entity.id] = sum(input.scenarios.map(scenario =>
-      simulateAndFindErrorLevel(input, entity, scenario, 'keith')
-    ));
-  };
-
-  const superBestEntities = allBestEntities.sort((a, b) => errorLevels[a.id] - errorLevels[b.id]);
-   */
-
-  const onlyActor = input.actors[0];
-  const bestEntities = Object.keys(allBestEntities[onlyActor]).map(
-    key => allBestEntities[onlyActor][key][0]
-  );
-
-  const entity = {
-    type: "sequence",
-    id: "nah",
-    children: bestEntities
-  } as Branch;
-
-  return {
-    entities: {
-      [onlyActor]: entity
-    }
-  };
-}
+//type BestFitness = { [key: string]: number };
+//type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
+type BestEntities = { [actorId: string]: EntityWithFitness[] };
+type EntityWithFitness = { entity: Entity, fitness: number };
 
 function executeCode(
   position: Vector,
@@ -451,4 +325,204 @@ export function simulate(
   }
 
   return positions;
+}
+
+type FitnessFunction = (input: Input, entity: Entity, actor: string) => EntityWithFitness;
+
+function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
+  return function checkFitness(input: Input, entity: Entity, actor: string): EntityWithFitness {
+
+    const fitnesses = scenarios.map(scenario => simulateAndFindErrorLevel(input, entity, scenario, actor));
+
+    return { entity, fitness: sum(fitnesses) }
+  }
+}
+
+function nodeIds(entity: Entity): string[] {
+  if (isLeaf(entity)) {
+    return [entity.id];
+  }
+
+  return flatten(entity.children.map(nodeIds));
+}
+
+function mapTree(entity: Entity, f: (e: Entity) => Entity): Entity {
+  if (isLeaf(entity)) {
+    return {...f({...entity})};
+  }
+
+  return {...f({...entity, children: entity.children.map(child => mapTree(child, f))})};
+}
+
+function findNode(entity: Entity, id: string): Entity | null {
+  if (entity.id === id) {
+    return entity;
+  }
+
+  if (isLeaf(entity)) {
+    return null;
+  }
+
+  return entity.children.map(child => findNode(child, id)).filter(Boolean)[0];
+}
+
+function swap(random: Random, mum: Entity, dad: Entity): Entity[] {
+  const nodeToSwapFromMum = findNode(mum, random.pick(nodeIds(mum))) as Entity;
+  const nodeToSwapFromDad = findNode(dad, random.pick(nodeIds(dad))) as Entity;
+
+  return [
+    mapTree(mum, entity => entity.id === nodeToSwapFromMum.id ? nodeToSwapFromDad : entity),
+    mapTree(dad, entity => entity.id === nodeToSwapFromDad.id ? nodeToSwapFromMum : entity)
+  ];
+}
+
+function cat(random: Random, mum: Entity, dad: Entity): Entity[] {
+  random;
+
+  return [
+    {
+      type: 'sequence',
+      id: `${mum}+${dad}`,
+      children: [mum, dad]
+    },
+    {
+      type: 'sequence',
+      id: `${dad}+${mum}`,
+      children: [dad, mum]
+    },
+  ]
+}
+
+function breedIndividuals(random: Random, mum: Entity, dad: Entity): Entity[] {
+  const strategy = random.pick([cat, swap]);
+
+  return strategy(random, mum, dad);
+}
+
+function breed(population: EntityWithFitness[], numberToBreed: number, random: Random): Entity[] {
+  const output = [];
+
+  while (output.length < numberToBreed) {
+    const mum = random.pick(population).entity;
+
+    let dad = mum;
+
+    while (dad === mum) {
+      dad = random.pick(population).entity;
+    }
+
+    output.push(...breedIndividuals(random, mum, dad));
+  }
+
+  return output;
+}
+
+function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction, actor: string, initialPopulation: Entity[], seed: number): EntityWithFitness[] {
+  const populationSize = 30;
+  const maxGenerations = 100;
+
+  let generation = 0;
+
+  const bestSolutions: BestEntities = {[actor]: []};
+
+  const random = new Random(Random.engines.mt19937().seed(seed));
+
+  const population = initialPopulation.slice();
+
+  while (generation < maxGenerations) {
+    if (population.length < populationSize) {
+      population.push(...generateEntities(random, populationSize, input.keys));
+    }
+
+    const populationWithFitnesses = population.map(entity => checkFitness(input, entity, actor));
+
+    const populationSortedByFitness = populationWithFitnesses.sort((a, b) => a.fitness - b.fitness);
+
+    if (populationSortedByFitness[0].fitness < 1000) {
+      console.log(generation, (populationSortedByFitness[0] || {fitness: Infinity}).fitness);
+      return populationSortedByFitness.slice(0, 10);
+    }
+
+    bestSolutions[actor] = bestSolutions[actor]
+      .concat(populationSortedByFitness)
+      .sort((a, b) => a.fitness - b.fitness)
+      .slice(0, 100);
+
+    console.log(generation, (bestSolutions[actor][0] || {fitness: Infinity}).fitness);
+
+    const children = breed(populationSortedByFitness, populationSize / 2, random);
+
+    while (population.length > 0) {
+      population.pop();
+    }
+
+    population.push(...children);
+
+    generation += 1;
+  }
+
+  return bestSolutions[actor].slice(0, 10);
+}
+
+export function helixPi(input: Input, seed: number): Output {
+  // Given a collection of scenarios, and a collection of actors
+  // We want to generate code so that each actor performs the desired behaviour in each scenario
+  //
+  // Consider a situation where we have one scenario and one actor
+  //
+  // Assuming we have no existing solutions, we want to generate a population's worth of new ones
+  //
+  // We then want to find the fitness of each individual in the population. We
+  // can do this by simulating the solution for the given actor in the scenario,
+  // and then getting a number back representing the distance from the expected
+  // points
+  //
+  // If we have found an optimal solution (ie fitness of 0), return it!
+  // If not, we want to iterate
+  //
+  //
+  //
+  // if we have two scenarios, and one actor
+  // we want to run the generation for each scenario
+  // and then run it using the results of both of those, with a fitness function that checks each scenario
+
+  if (input.scenarios.length === 0) {
+    const actor = input.actors[0];
+    const scenario = input.scenarios[0 ];
+
+    const fitness = makeFitnessChecker([scenario]);
+    const bestSolutions = generateEntitiesForScenario(input, fitness, actor, [], seed);
+
+    return {entities: {[actor]: bestSolutions[0].entity}};
+  } else {
+    const random = new Random(Random.engines.mt19937().seed(seed));
+
+    const actor = input.actors[0];
+
+    const entitiesForEachScenario =
+      input.scenarios.map(
+        scenario => generateEntitiesForScenario(
+          input,
+          makeFitnessChecker([scenario]),
+          actor,
+          [],
+          random.integer((-2) ** 53, 2 ** 53)
+        )
+      )
+
+    const solutions = generateEntitiesForScenario(
+      input,
+      makeFitnessChecker(input.scenarios),
+      actor,
+      flatten(entitiesForEachScenario).map(entityWithFitness => entityWithFitness.entity),
+      random.integer((-2) ** 53, 2 ** 53)
+    );
+
+    return {entities: {[actor]: solutions[0].entity}};
+  }
+}
+
+
+function flatten<T> (t: T[][]): T[] {
+  return t.concat.apply([], t);
 }
