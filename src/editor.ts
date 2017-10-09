@@ -1165,7 +1165,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
   );
 
   const helixPiInput$ = project$
-    .compose(sources.Time.debounce(300))
+    .compose(sources.Time.debounce(500))
     .map(projectToHelixPiInput);
   const output$ = sources.HelixPi.startWith({ entities: {} });
 

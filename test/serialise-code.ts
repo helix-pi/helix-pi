@@ -15,7 +15,9 @@ describe("codeToString", () => {
           id: "1912010071",
           children: [
             {
-              type: "moveUp",
+              type: "move",
+              amount: 1,
+              direction: "up",
               id: "307983014"
             },
             {
@@ -31,7 +33,7 @@ describe("codeToString", () => {
       codeToString(code).trim(),
       `
 if keyDown("w") {
-  moveUp()
+  move(up, 1)
 }`.trim()
     );
   });
@@ -47,13 +49,17 @@ if keyDown("w") {
           id: "1912010071",
           children: [
             {
-              type: "moveUp",
+              type: "move",
+              amount: 1,
+              direction: "up",
               id: "307983014"
             },
             {
-              type: "moveDown",
-              id: "3454788831"
-            }
+              type: "move",
+              amount: 1,
+              direction: "down",
+              id: "307983014"
+            },
           ]
         }
       ]
@@ -63,9 +69,9 @@ if keyDown("w") {
       codeToString(code).trim(),
       `
 if keyDown("w") {
-  moveUp()
+  move(up, 1)
 } else {
-  moveDown()
+  move(down, 1)
 }`.trim()
     );
   });

@@ -1,4 +1,6 @@
-import {helixPi} from './index';
+import {helixPi, Output} from './index';
+
+let previousOutput : Output | null = null;
 
 module.exports = function(self: Worker) {
   self.onmessage = function (ev: MessageEvent) {
@@ -6,7 +8,10 @@ module.exports = function(self: Worker) {
 
     console.log('input', input);
 
-    const output = helixPi(input, Math.random() * 10000);
+    console.log(previousOutput);
+    const output = helixPi(input, Math.random() * 10000, previousOutput);
+
+    previousOutput = output;
 
     console.log('output', output);
 

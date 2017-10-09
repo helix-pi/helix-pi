@@ -51,18 +51,14 @@ export type InputState = {
   [key: string]: boolean;
 };
 
-export type LeafCommandName =
-  | "moveRight"
-  | "moveLeft"
-  | "moveUp"
-  | "moveDown"
-  | "noop";
-
 export type Entity = Tree;
 
 export type Tree = Branch | Leaf;
 
 export type Branch = Sequence | InputConditional;
+
+export type Leaf = Move | Noop;
+
 
 export type Sequence = {
   type: "sequence";
@@ -76,11 +72,64 @@ export type InputConditional = {
   id: string;
   children: Array<Tree>;
 };
-
-export type Leaf = {
-  type: LeafCommandName;
+export type Move = {
+  type: 'move';
   id: string;
+  amount: number;
+  direction: Direction;
 };
+
+export type Direction = 'up' | 'right' | 'down' | 'left';
+
+export type Noop = {
+  type: 'noop';
+  id: string;
+}
+
+export type Mutation = BranchMutation | LeafMutation;
+export type BranchMutation = SequenceMutation | InputConditionalMutation;
+export type LeafMutation = MoveMutation | NoopMutation;
+
+export type SequenceMutation = NewEntityMutation | RemovalMutation | SwitchMutation | ReplaceMutation;
+export type InputConditionalMutation = SwitchMutation | ReplaceMutation;
+
+export type NewEntityMutation = {
+  id: string;
+  type: 'NewEntityMutation';
+  newEntity: Entity;
+  spliceIndex: number;
+}
+
+export type ReplaceMutation = {
+  id: string;
+  type: 'ReplaceMutation';
+  newEntity: Entity;
+  spliceIndex: number;
+}
+
+export type RemovalMutation = {
+  id: string;
+  type: 'RemovalMutation';
+  removeIndex: number;
+}
+
+export type SwitchMutation = {
+  id: string;
+  type: 'SwitchMutation';
+  fromIndex: number;
+  toIndex: number;
+}
+
+export type MoveMutation = {
+  id: string;
+  type: 'MoveMutation';
+  change: number;
+}
+
+export type NoopMutation = {
+  id: string;
+  type: 'NoopMutation';
+}
 
 export type Scenario = {
   name: string;
@@ -174,23 +223,36 @@ function makeChildren(random: Random, n: number, keys: string[], depth: number):
 function generateEntity(seed: number, keys: string[], depth = 0): Entity {
   const random = new Random(Random.engines.mt19937().seed(seed));
 
-  const isLeaf = depth > 2 || random.bool();
+  const isLeaf = depth > 1 || random.bool();
 
   if (isLeaf) {
     const possibleCommands = [
-      "moveLeft",
-      "moveRight",
-      "moveUp",
-      "moveDown",
+      "move",
       "noop"
     ];
 
-    const command = (random as any).pick(possibleCommands) as LeafCommandName;
+    const command = random.pick(possibleCommands);
 
-    return {
-      type: command,
-      id: seed.toString()
-    };
+    if (command === "noop") {
+      return {
+        type: command,
+        id: seed.toString()
+      };
+    }
+
+    if (command === "move") {
+      const direction = random.pick(["up", "right", "left", "down"]) as Direction;
+      const amount = random.integer(0, 20) / 10;
+
+      return {
+        type: command,
+        id: seed.toString(),
+        direction,
+        amount
+      }
+    }
+
+    throw new Error('Unimplemented command');
   } else {
     const possibleCommands = ["sequence", "inputConditional"];
     // TODO - fix definitely typed definition
@@ -240,20 +302,23 @@ function executeCode(
   code: Entity,
   input: InputState
 ): Vector {
-  if (code.type === "moveRight") {
-    return { ...position, x: position.x + 1 };
-  }
+  if (code.type === "move") {
+    if (code.direction === "left") {
+      return { ...position, x: position.x - code.amount };
+    }
 
-  if (code.type === "moveLeft") {
-    return { ...position, x: position.x - 1 };
-  }
+    if (code.direction === "up") {
+      return { ...position, y: position.y - code.amount };
+    }
 
-  if (code.type === "moveUp") {
-    return { ...position, y: position.y - 1 };
-  }
+    if (code.direction === "down") {
+      return { ...position, y: position.y + code.amount };
+    }
 
-  if (code.type === "moveDown") {
-    return { ...position, y: position.y + 1 };
+    if (code.direction === "right") {
+      return { ...position, x: position.x + code.amount };
+    }
+
   }
 
   if (code.type === "sequence") {
@@ -370,6 +435,13 @@ function swap(random: Random, mum: Entity, dad: Entity): Entity[] {
   const nodeToSwapFromMum = findNode(mum, random.pick(nodeIds(mum))) as Entity;
   const nodeToSwapFromDad = findNode(dad, random.pick(nodeIds(dad))) as Entity;
 
+  if (!nodeToSwapFromMum || !nodeToSwapFromDad) {
+    return [
+      mum,
+      dad
+    ]
+  }
+
   return [
     mapTree(mum, entity => entity.id === nodeToSwapFromMum.id ? nodeToSwapFromDad : entity),
     mapTree(dad, entity => entity.id === nodeToSwapFromDad.id ? nodeToSwapFromMum : entity)
@@ -382,19 +454,19 @@ function cat(random: Random, mum: Entity, dad: Entity): Entity[] {
   return [
     {
       type: 'sequence',
-      id: `${mum}+${dad}`,
+      id: `(${mum.id}+${dad.id})`,
       children: [mum, dad]
     },
     {
       type: 'sequence',
-      id: `${dad}+${mum}`,
+      id: `(${dad.id}+${mum.id})`,
       children: [dad, mum]
     },
   ]
 }
 
 function breedIndividuals(random: Random, mum: Entity, dad: Entity): Entity[] {
-  const strategy = random.pick([cat, swap]);
+  const strategy = random.pick([cat, swap, swap]);
 
   return strategy(random, mum, dad);
 }
@@ -402,14 +474,16 @@ function breedIndividuals(random: Random, mum: Entity, dad: Entity): Entity[] {
 function breed(population: EntityWithFitness[], numberToBreed: number, random: Random): Entity[] {
   const output = [];
 
+  function pickParents(): Entity[] {
+    return random
+      .sample(population, 5)
+      .sort((a, b) => a.fitness - b.fitness)
+      .slice(0, 2)
+      .map(result => result.entity);
+  }
+
   while (output.length < numberToBreed) {
-    const mum = random.pick(population).entity;
-
-    let dad = mum;
-
-    while (dad === mum) {
-      dad = random.pick(population).entity;
-    }
+    const [mum, dad] = pickParents();
 
     output.push(...breedIndividuals(random, mum, dad));
   }
@@ -418,8 +492,8 @@ function breed(population: EntityWithFitness[], numberToBreed: number, random: R
 }
 
 function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction, actor: string, initialPopulation: Entity[], seed: number): EntityWithFitness[] {
-  const populationSize = 30;
-  const maxGenerations = 100;
+  const populationSize = 128;
+  const maxGenerations = 50;
 
   let generation = 0;
 
@@ -427,19 +501,21 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
 
   const random = new Random(Random.engines.mt19937().seed(seed));
 
-  const population = initialPopulation.slice();
+  let population: Entity[] = [];
 
   while (generation < maxGenerations) {
     if (population.length < populationSize) {
-      population.push(...generateEntities(random, populationSize, input.keys));
+      population.push(...generateEntities(random, populationSize - population.length, input.keys));
     }
+
+    population.push(...initialPopulation);
 
     const populationWithFitnesses = population.map(entity => checkFitness(input, entity, actor));
 
     const populationSortedByFitness = populationWithFitnesses.sort((a, b) => a.fitness - b.fitness);
 
-    if (populationSortedByFitness[0].fitness < 1000) {
-      console.log(generation, (populationSortedByFitness[0] || {fitness: Infinity}).fitness);
+    if (populationSortedByFitness[0].fitness < 20) {
+      //console.log('early return!', populationSortedByFitness[0].fitness);
       return populationSortedByFitness.slice(0, 10);
     }
 
@@ -448,9 +524,9 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
       .sort((a, b) => a.fitness - b.fitness)
       .slice(0, 100);
 
-    console.log(generation, (bestSolutions[actor][0] || {fitness: Infinity}).fitness);
+    //console.log(generation, (bestSolutions[actor][0] || {fitness: Infinity}).fitness);
 
-    const children = breed(populationSortedByFitness, populationSize / 2, random);
+    const children = breed(populationSortedByFitness.slice(0, 16).concat(bestSolutions[actor].slice(0, 8)), populationSize / 2, random);
 
     while (population.length > 0) {
       population.pop();
@@ -458,13 +534,209 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
 
     population.push(...children);
 
+    population = population.map(entity => mutate(input.keys, random, entity));
+
+
     generation += 1;
   }
 
   return bestSolutions[actor].slice(0, 10);
 }
 
-export function helixPi(input: Input, seed: number): Output {
+const MUTATE_PERCENTAGE = 100;
+
+function mutateNode(keys: string[], random: Random, entity: Entity): Entity {
+  const willMutate = random.bool(MUTATE_PERCENTAGE);
+
+  if (!willMutate) {
+    return entity;
+  }
+
+  const mutationId = random.integer(MIN_SEED, MAX_SEED);
+  const mutation = chooseMutation(keys, mutationId, entity);
+
+  return applyMutation(entity, mutation);
+}
+
+function applyMutation(entity: Entity, mutation: Mutation): Entity {
+  if (mutation.type === "NewEntityMutation") {
+    const newChildren = (entity as Branch).children.slice();
+
+    newChildren.splice(mutation.spliceIndex, 0, mutation.newEntity);
+
+    return {
+      ...entity,
+
+      id: `(${entity.id}%${mutation.id})`,
+
+      children: newChildren
+    }
+  }
+
+  if (mutation.type === "RemovalMutation") {
+    const newChildren = (entity as Branch)
+      .children
+      .slice()
+      .filter((_, index) => index !== mutation.removeIndex);
+
+    return {
+      ...entity,
+
+      id: `(${entity.id}%${mutation.id})`,
+      children: newChildren
+    }
+  }
+
+  if (mutation.type === "SwitchMutation") {
+    const branch = entity as Branch;
+
+    const newChildren = branch.children.map((child, index) => {
+      if (index === mutation.fromIndex) {
+        return branch.children[mutation.toIndex];
+      }
+
+      if (index === mutation.toIndex) {
+        return branch.children[mutation.fromIndex];
+      }
+
+      return child;
+    })
+
+    return {
+      ...entity,
+
+      id: `(${entity.id}%${mutation.id})`,
+
+      children: newChildren
+    }
+  }
+
+  if (mutation.type === "MoveMutation") {
+    const move = entity as Move;
+
+    return {
+      ...move,
+
+      id: `(${entity.id}%${mutation.id})`,
+
+      amount: move.amount + mutation.change
+    }
+  }
+
+  if (mutation.type === "ReplaceMutation") {
+    const newChildren = (entity as Branch).children.slice();
+
+    newChildren.splice(mutation.spliceIndex, 1, mutation.newEntity);
+
+    return {
+      ...entity,
+
+      id: `(${entity.id}%${mutation.id})`,
+
+      children: newChildren
+    }
+  }
+
+  return entity;
+}
+
+function chooseMutation(keys: string[], seed: number, entity: Entity): Mutation {
+  const random = new Random(Random.engines.mt19937().seed(seed));
+
+  if (entity.type === "sequence") {
+    const types = ["NewEntityMutation", "RemovalMutation", "SwitchMutation", "ReplaceMutation"];
+
+    const mutationType = random.pick(types);
+
+    if (mutationType === "NewEntityMutation") {
+      const newEntity = generateEntity(random.integer(MIN_SEED, MAX_SEED), keys, 0);
+
+      return {
+        id: seed.toString(),
+        type: mutationType,
+        newEntity,
+        spliceIndex: random.integer(0, (entity as Branch).children.length)
+      }
+    }
+
+    if (mutationType === "ReplaceMutation") {
+      const newEntity = generateEntity(random.integer(MIN_SEED, MAX_SEED), keys, 0);
+
+      return {
+        id: seed.toString(),
+        type: mutationType,
+        newEntity,
+        spliceIndex: random.integer(0, (entity as Branch).children.length - 1)
+      }
+    }
+
+    if (mutationType === "RemovalMutation") {
+      return {
+        id: seed.toString(),
+        type: mutationType,
+        removeIndex: random.integer(0, entity.children.length - 1)
+      }
+    }
+
+    if (mutationType === "SwitchMutation") {
+      return {
+        id: seed.toString(),
+        type: mutationType,
+        fromIndex: random.integer(0, entity.children.length - 1),
+        toIndex: random.integer(0, entity.children.length - 1)
+      }
+    }
+  }
+
+  if (entity.type === "inputConditional") {
+    const types = ["SwitchMutation", "ReplaceMutation"];
+
+    const mutationType = random.pick(types);
+
+    if (mutationType === "SwitchMutation") {
+      return {
+        id: seed.toString(),
+        type: "SwitchMutation",
+        fromIndex: 0,
+        toIndex: 1
+      }
+    }
+
+    if (mutationType === "ReplaceMutation") {
+      const newEntity = generateEntity(random.integer(MIN_SEED, MAX_SEED), keys, 0);
+
+      return {
+        id: seed.toString(),
+        type: mutationType,
+        newEntity,
+        spliceIndex: random.pick([0, 1])
+      }
+    }
+  }
+
+  if (entity.type === "move") {
+    return {
+        id: seed.toString(),
+      type: "MoveMutation",
+      change: random.integer(-10, 10) / 10,
+    }
+  }
+
+  if (entity.type === "noop") {
+    return {
+      id: seed.toString(),
+      type: "NoopMutation"
+    };
+  }
+
+  throw new Error(`Unimplemented type ${entity.type}`);
+}
+
+function mutate(keys: string[], random: Random, entity: Entity): Entity {
+  return mapTree(entity, node => mutateNode(keys, random, node))
+}
+
+export function helixPi(input: Input, seed: number, previousOutput: Output | null = null): Output {
   // Given a collection of scenarios, and a collection of actors
   // We want to generate code so that each actor performs the desired behaviour in each scenario
   //
@@ -486,35 +758,53 @@ export function helixPi(input: Input, seed: number): Output {
   // we want to run the generation for each scenario
   // and then run it using the results of both of those, with a fitness function that checks each scenario
 
-  if (input.scenarios.length === 0) {
+  if (input.scenarios.length === 1) {
     const actor = input.actors[0];
-    const scenario = input.scenarios[0 ];
+    const scenario = input.scenarios[0];
 
     const fitness = makeFitnessChecker([scenario]);
-    const bestSolutions = generateEntitiesForScenario(input, fitness, actor, [], seed);
+    let previousSolutions: Entity[] = [];
+
+    if (previousOutput && previousOutput.entities[actor]) {
+      previousSolutions = [previousOutput.entities[actor]];
+    }
+
+    const bestSolutions = generateEntitiesForScenario(
+      input,
+      fitness,
+      actor,
+      previousSolutions,
+      seed
+    );
 
     return {entities: {[actor]: bestSolutions[0].entity}};
   } else {
     const random = new Random(Random.engines.mt19937().seed(seed));
 
     const actor = input.actors[0];
+    let previousSolutions: Entity[] = [];
+
+    if (previousOutput && previousOutput.entities[actor]) {
+      previousSolutions = [previousOutput.entities[actor]];
+    }
 
     const entitiesForEachScenario =
       input.scenarios.map(
-        scenario => generateEntitiesForScenario(
+        scenario => console.log('scenario:', scenario.name) || generateEntitiesForScenario(
           input,
           makeFitnessChecker([scenario]),
           actor,
-          [],
+          previousSolutions,
           random.integer((-2) ** 53, 2 ** 53)
         )
       )
 
+    console.log('final solution:')
     const solutions = generateEntitiesForScenario(
       input,
       makeFitnessChecker(input.scenarios),
       actor,
-      flatten(entitiesForEachScenario).map(entityWithFitness => entityWithFitness.entity),
+      previousSolutions.concat(flatten(entitiesForEachScenario).map(entityWithFitness => entityWithFitness.entity)),
       random.integer((-2) ** 53, 2 ** 53)
     );
 
