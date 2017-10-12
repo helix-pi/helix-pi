@@ -54,7 +54,7 @@ a:hover {
 
 .nav-bar {
   background: #222;
-  height: 20px;
+  margin: 2px;
 }
 
 .project {
@@ -114,6 +114,7 @@ input, button {
 .timebar {
   height: 98px;
   background: #333;
+  user-select: none;
 }
 
 .timebar .simulation {

@@ -26,7 +26,7 @@ import * as work from "webworkify";
 import xs, { Stream } from "xstream";
 import sampleCombine from "xstream/extra/sampleCombine";
 
-import { Scenario, ActorFrame, Input, Output } from "./index";
+import { actorPosition, executeCode, Scenario, Input, Output, Entity } from "./index";
 import { codeToString } from "./code-to-string";
 import { inputEventsToRanges, InputRange } from "./input-events-to-ranges";
 import { tweenFrames } from "./tween-frames";
@@ -47,6 +47,7 @@ interface Project {
 
   scenarios: Scenario[];
   actors: Actor[];
+  results: Output;
 }
 
 interface Actor {
@@ -67,11 +68,16 @@ interface ISources {
   HelixPi: Stream<Output>;
 }
 
+type InputAndResults = {
+  input: Input;
+  results: Output;
+};
+
 interface ISinks {
   DOM: Stream<VNode>;
   Router?: RouterSink;
   DB?: any;
-  HelixPi?: Stream<Input>;
+  HelixPi?: Stream<InputAndResults>;
 }
 
 function transformValues<A, B>(
@@ -230,6 +236,7 @@ function makeProject(id: string): Project {
     dragOffset: null,
     currentFrame: 0,
     lastInput: null,
+    results: { entities: {} },
     keys: ["w", "a", "s", "d"] // TODO - don't hardcode this
   };
 }
@@ -462,10 +469,6 @@ function renderTimeBar(
   );
 }
 
-function last<T>(array: T[]): T {
-  return array[array.length - 1];
-}
-
 function renderSimulation(
   project: Project,
   scenario: Scenario,
@@ -546,10 +549,6 @@ function renderSimulation(
       })
     ]
   );
-}
-
-function actorPosition(frames: ActorFrame[], frame: number) {
-  return frames[frame] || last(frames.slice(0, frame).filter(Boolean));
 }
 
 function renderScenario(
@@ -1055,9 +1054,23 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     .filter((elements: Element[]) => elements.length > 0)
     .map((elements: Element[]) => elements[0]);
 
-  const changeTime$ = sources.DOM
+  const changeTimeMousedown$ = sources.DOM
     .select(".timebar")
-    .events("mousedown")
+    .events("mousedown");
+
+  const changeTimeMouseup$ = sources.DOM.select(".timebar").events("mouseup");
+
+  const changeTimeMousemove$ = sources.DOM
+    .select(".timebar")
+    .events("mousemove");
+
+  const changeTimeEvent$ = changeTimeMousedown$
+    .map(event =>
+      changeTimeMousemove$.endWhen(changeTimeMouseup$).startWith(event)
+    )
+    .flatten();
+
+  const changeTime$ = changeTimeEvent$
     .map(mousePositionFromEvent)
     .compose(sampleCombine(timeBarElement$))
     .map(([position, element]) => mousePositionOnSvg(position, element))
@@ -1145,6 +1158,17 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     }
   );
 
+  const helixPiInput$ = project$
+    .compose(sources.Time.debounce(500))
+    .map(project => ({
+      input: projectToHelixPiInput(project),
+      results: project.results
+    }));
+
+  const setResult$ = sources.HelixPi.map(
+    output => (project: Project): Project => ({ ...project, results: output })
+  );
+
   const reducer$ = xs.merge(
     sources.initialState$.take(1).map(project => () => project),
     changeName$,
@@ -1161,18 +1185,26 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     advanceFrame$,
     changeTime$,
     recordKeydown$,
-    recordKeyup$
+    recordKeyup$,
+    setResult$
   );
 
-  const helixPiInput$ = project$
-    .compose(sources.Time.debounce(500))
-    .map(projectToHelixPiInput);
-  const output$ = sources.HelixPi.startWith({ entities: {} });
+  const playGame$ = sources.DOM.select(".play-game").events("click");
+
+  const id$ = project$.map(project => project.id).remember();
+
+  const playGameRouteChange$ = id$
+    .map(id => playGame$.mapTo(`/project/${id}/play`))
+    .flatten();
+
+  const routeChange$ = xs.merge(playGameRouteChange$);
 
   return {
     onion: reducer$,
     state$: project$,
     HelixPi: helixPiInput$,
+
+    Router: routeChange$,
 
     DOM: xs
       .combine(
@@ -1181,8 +1213,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
         recording$.compose(sources.Time.delay(1)), // TODO - remove, here because otherwise stop-recording gets clicked in the same go???
         nameComponent.DOM,
         scenarioNameComponent.DOM.startWith(div()),
-        actorPanel.DOM.startWith(div()),
-        output$
+        actorPanel.DOM.startWith(div())
       )
       .map(
         (
@@ -1192,8 +1223,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
             recording,
             nameVtree,
             scenarioNameVtree,
-            actorPanelVtree,
-            output
+            actorPanelVtree
           ]
         ) =>
           div(".project", [
@@ -1207,9 +1237,13 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               div(".actors", project.actors.map(renderActorButton)),
               button(".add-actor", "Add actor"),
 
+              div(".sidebar-title", "Play game"),
+              button(".play-game", "Play"),
+
+              div(".sidebar-title", "Code preview"),
               pre(
-                Object.keys(output.entities)
-                  .map(key => codeToString(output.entities[key]))
+                Object.keys(project.results.entities)
+                .map(key => key + '\n' + codeToString(project.results.entities[key]))
                   .join("\n")
               )
             ]),
@@ -1251,11 +1285,81 @@ function view(child: VNode): VNode {
   ]);
 }
 
+interface PlayerState {
+  actorPosition: Vector;
+  code: Entity;
+  actor: Actor;
+}
+
+function Player(sources: ISources): ISinks {
+  const project$ = sources.DB.store("projects").get(sources.id as string) as Stream<Project>;
+
+  const projectState$ = project$.take(1).debug('project');
+
+  function stateFromProject(project: Project): PlayerState {
+    const actor = project.actors[0];
+
+    return {
+      actorPosition: {x: 300, y: 300},
+      code: project.results.entities[actor.id],
+      actor
+    };
+  }
+
+  type KeyboardInput = {[key: string]: boolean};
+
+  const keydown$ = sources.DOM.select("body").events("keydown").map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
+    return {
+      ...input,
+
+      [ev.key.toLowerCase()]: true
+    }
+  });
+
+  const keyup$ = sources.DOM.select("body").events("keyup").map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
+    return {
+      ...input,
+
+      [ev.key.toLowerCase()]: false
+    }
+  });
+
+  const input$ = xs.merge(keydown$, keyup$).fold((input, reducer) => reducer(input), {});
+
+  const frame$ = sources.Time.animationFrames();
+  const state$ = projectState$.map((project) =>
+    frame$.compose(sampleCombine(input$)).fold((state, [frame, input]) => update(state, frame, input), stateFromProject(project))
+  ).flatten();
+
+
+  function update(state: PlayerState, frame: any, input: KeyboardInput): PlayerState {
+    frame;
+    return {
+      ...state,
+
+      actorPosition: executeCode(state.actorPosition, state.code, input)
+    }
+  }
+
+  function renderPlayer(state: PlayerState): VNode {
+    return div([
+      h('svg', {attrs: {width: '100%', height: '100vh'}}, [
+        renderActor(state.actor, state.actorPosition.x, state.actorPosition.y)
+      ])
+    ])
+  }
+
+  return {
+    DOM: state$.map(renderPlayer)
+  }
+}
+
 function main(sources: ISources): ISinks {
   const page$ = sources.Router.define({
     "/": Home,
-    "/project/:id": (id: string) => extendSources(ProjectWithDB, { id })
-  });
+    "/project/:id": (id: string) => extendSources(ProjectWithDB, { id }),
+    "/project/:id/play": (id: string) => extendSources(Player, { id })
+  }).debug('page');
 
   const newProject$ = sources.DOM
     .select(".new-project")
@@ -1288,6 +1392,10 @@ function main(sources: ISources): ISinks {
     .map((c: ISinks) => c.HelixPi || xs.empty())
     .flatten();
 
+  const componentRouteChange$ = component$
+    .map((c: ISinks) => c.Router || xs.empty())
+    .flatten();
+
   return {
     DOM: componentVtree$.map(view),
 
@@ -1296,7 +1404,8 @@ function main(sources: ISources): ISinks {
     Router: xs.merge(
       home$.mapTo(`/`),
       newProject$.mapTo(`/project/${uuid.v4()}`),
-      gotoProject$
+      gotoProject$,
+      componentRouteChange$
     ),
 
     HelixPi: helixPi$

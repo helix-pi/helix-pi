@@ -185,7 +185,7 @@ function simulateAndFindErrorLevel(
 
   const size = findSize(entity);
 
-  simulate(input, scenario, output, options);
+  simulate(actor, input, scenario, output, options);
 
   return sum(errorLevels) * 1000 + size;
 }
@@ -297,7 +297,7 @@ function generateEntities(random: Random, generationSize: number, keys: string[]
 type BestEntities = { [actorId: string]: EntityWithFitness[] };
 type EntityWithFitness = { entity: Entity, fitness: number };
 
-function executeCode(
+export function executeCode(
   position: Vector,
   code: Entity,
   input: InputState
@@ -344,6 +344,7 @@ function executeCode(
 }
 
 export function simulate(
+  activeActor: string,
   input: Input,
   scenario: Scenario,
   output: Output,
@@ -378,12 +379,18 @@ export function simulate(
       options.postFrameCallback(currentFrame, positions);
     }
 
+    activeActor;
     actors.forEach(actor => {
-      positions[actor] = executeCode(
-        positions[actor],
-        output.entities[actor],
-        inputState
-      );
+      if (activeActor === actor) {
+        positions[actor] = executeCode(
+          positions[actor],
+          output.entities[actor],
+          inputState
+        );
+      } else {
+        positions[actor] = actorPosition(scenario.actors[actor], currentFrame).position;
+      }
+
     });
 
     currentFrame++;
@@ -476,7 +483,7 @@ function breed(population: EntityWithFitness[], numberToBreed: number, random: R
 
   function pickParents(): Entity[] {
     return random
-      .sample(population, 5)
+      .sample(population, 8)
       .sort((a, b) => a.fitness - b.fitness)
       .slice(0, 2)
       .map(result => result.entity);
@@ -492,8 +499,8 @@ function breed(population: EntityWithFitness[], numberToBreed: number, random: R
 }
 
 function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction, actor: string, initialPopulation: Entity[], seed: number): EntityWithFitness[] {
-  const populationSize = 128;
-  const maxGenerations = 50;
+  const populationSize = 256;
+  const maxGenerations = 10;
 
   let generation = 0;
 
@@ -515,7 +522,7 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
     const populationSortedByFitness = populationWithFitnesses.sort((a, b) => a.fitness - b.fitness);
 
     if (populationSortedByFitness[0].fitness < 20) {
-      //console.log('early return!', populationSortedByFitness[0].fitness);
+      console.log('early return!', populationSortedByFitness[0].fitness / 1000);
       return populationSortedByFitness.slice(0, 10);
     }
 
@@ -524,9 +531,9 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
       .sort((a, b) => a.fitness - b.fitness)
       .slice(0, 100);
 
-    //console.log(generation, (bestSolutions[actor][0] || {fitness: Infinity}).fitness);
+    console.log(generation, (bestSolutions[actor][0] || {fitness: Infinity}).fitness / 1000);
 
-    const children = breed(populationSortedByFitness.slice(0, 16).concat(bestSolutions[actor].slice(0, 8)), populationSize / 2, random);
+    const children = breed(populationSortedByFitness.slice(0, 32).concat(bestSolutions[actor].slice(0, 8)), populationSize / 2, random);
 
     while (population.length > 0) {
       population.pop();
@@ -543,7 +550,7 @@ function generateEntitiesForScenario(input: Input, checkFitness: FitnessFunction
   return bestSolutions[actor].slice(0, 10);
 }
 
-const MUTATE_PERCENTAGE = 100;
+const MUTATE_PERCENTAGE = 0.05;
 
 function mutateNode(keys: string[], random: Random, entity: Entity): Entity {
   const willMutate = random.bool(MUTATE_PERCENTAGE);
@@ -758,60 +765,79 @@ export function helixPi(input: Input, seed: number, previousOutput: Output | nul
   // we want to run the generation for each scenario
   // and then run it using the results of both of those, with a fitness function that checks each scenario
 
+  const results: Output = {entities: {}};
+
   if (input.scenarios.length === 1) {
-    const actor = input.actors[0];
-    const scenario = input.scenarios[0];
+    input.actors.forEach(actor => {
+      const scenario = input.scenarios[0];
 
-    const fitness = makeFitnessChecker([scenario]);
-    let previousSolutions: Entity[] = [];
+      if (!(actor in scenario.actors)) { return; }
 
-    if (previousOutput && previousOutput.entities[actor]) {
-      previousSolutions = [previousOutput.entities[actor]];
-    }
+      const fitness = makeFitnessChecker([scenario]);
+      let previousSolutions: Entity[] = [];
 
-    const bestSolutions = generateEntitiesForScenario(
-      input,
-      fitness,
-      actor,
-      previousSolutions,
-      seed
-    );
+      if (previousOutput && previousOutput.entities[actor]) {
+        previousSolutions = [previousOutput.entities[actor]];
+      }
 
-    return {entities: {[actor]: bestSolutions[0].entity}};
+      const bestSolutions = generateEntitiesForScenario(
+        input,
+        fitness,
+        actor,
+        previousSolutions,
+        seed
+      );
+
+      results.entities[actor] = bestSolutions[0].entity;
+    });
   } else {
-    const random = new Random(Random.engines.mt19937().seed(seed));
+    input.actors.forEach(actor => {
+      const random = new Random(Random.engines.mt19937().seed(seed));
 
-    const actor = input.actors[0];
-    let previousSolutions: Entity[] = [];
+      let previousSolutions: Entity[] = [];
 
-    if (previousOutput && previousOutput.entities[actor]) {
-      previousSolutions = [previousOutput.entities[actor]];
-    }
+      if (previousOutput && previousOutput.entities[actor]) {
+        previousSolutions = [previousOutput.entities[actor]];
+      }
 
-    const entitiesForEachScenario =
-      input.scenarios.map(
-        scenario => console.log('scenario:', scenario.name) || generateEntitiesForScenario(
-          input,
-          makeFitnessChecker([scenario]),
-          actor,
-          previousSolutions,
-          random.integer((-2) ** 53, 2 ** 53)
+      const scenariosForActor = input.scenarios.filter(scenario => actor in scenario.actors);
+      console.log(input.scenarios.length, scenariosForActor.length);
+
+      const entitiesForEachScenario =
+        scenariosForActor.map(
+          scenario => console.log('scenario:', scenario.name) || generateEntitiesForScenario(
+            input,
+            makeFitnessChecker([scenario]),
+            actor,
+            previousSolutions,
+            random.integer((-2) ** 53, 2 ** 53)
+          )
         )
-      )
 
-    console.log('final solution:')
-    const solutions = generateEntitiesForScenario(
-      input,
-      makeFitnessChecker(input.scenarios),
-      actor,
-      previousSolutions.concat(flatten(entitiesForEachScenario).map(entityWithFitness => entityWithFitness.entity)),
-      random.integer((-2) ** 53, 2 ** 53)
-    );
+      console.log('final solution:', previousSolutions, previousOutput)
+      const solutions = generateEntitiesForScenario(
+        input,
+        makeFitnessChecker(scenariosForActor),
+        actor,
+        previousSolutions.concat(flatten(entitiesForEachScenario).map(entityWithFitness => entityWithFitness.entity)),
+        random.integer((-2) ** 53, 2 ** 53)
+      );
 
-    return {entities: {[actor]: solutions[0].entity}};
+      results.entities[actor] = solutions[0].entity;
+    });
   }
+
+
+  return results;
 }
 
+function last<T>(array: T[]): T {
+  return array[array.length - 1];
+}
+
+export function actorPosition(frames: ActorFrame[], frame: number) {
+  return frames[frame] || last(frames.slice(0, frame).filter(Boolean));
+}
 
 function flatten<T> (t: T[][]): T[] {
   return t.concat.apply([], t);

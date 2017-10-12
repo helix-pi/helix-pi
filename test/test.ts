@@ -64,7 +64,7 @@ describe("Helix Pi", () => {
     const seed = 50;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 1
     });
 
@@ -101,7 +101,7 @@ describe("Helix Pi", () => {
     const seed = 42;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 1
     });
 
@@ -142,7 +142,7 @@ describe("Helix Pi", () => {
     const seed = 50;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 1
     });
 
@@ -181,7 +181,7 @@ describe("Helix Pi", () => {
     const seed = 42;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 1
     });
 
@@ -228,7 +228,7 @@ describe("Helix Pi", () => {
     const seed = 42;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 2
     });
 
@@ -299,7 +299,7 @@ describe("Helix Pi", () => {
     const seed = 101;
     const output = helixPi(input, seed);
 
-    const simulationResult = simulate(input, input.scenarios[0], output, {
+    const simulationResult = simulate("keith", input, input.scenarios[0], output, {
       frames: 2
     });
 
@@ -308,7 +308,7 @@ describe("Helix Pi", () => {
       input.scenarios[0].actors.keith[2].position
     );
 
-    const simulationResult2 = simulate(input, input.scenarios[1], output, {
+    const simulationResult2 = simulate("keith", input, input.scenarios[1], output, {
       frames: 2
     });
 
