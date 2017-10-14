@@ -37,6 +37,7 @@ export type Input = {
 export type Output = {
   entities: { [key: string]: Entity };
   errorLevels: ErrorLevels;
+  positions: { [actorId: string]: ScenarioPositions };
 };
 
 export type ErrorLevels = { [actorId: string]: ScenarioErrorLevels };
@@ -219,18 +220,22 @@ function sum(array: number[]): number {
   return array.reduce((a, b) => a + b, 0);
 }
 
+type ErrorLevelAndPositions = {errorLevel: number; positions: Vector[]};
+
 function simulateAndFindErrorLevel(
   input: Input,
   entity: Entity,
   scenario: Scenario,
   actor: string
-) {
+): ErrorLevelAndPositions {
   const errorLevels: number[] = [];
+  const actorPositions: Vector[] = [];
   const output = {
     entities: {
       [actor]: entity
     },
-    errorLevels: {}
+    errorLevels: {},
+    positions: {}
   };
 
   const frames = scenario.actors[actor].length;
@@ -240,8 +245,10 @@ function simulateAndFindErrorLevel(
 
     postFrameCallback: (frame: number, positions: ActorStates) => {
       const expectedPosition = scenario.actors[actor][frame].position;
-      const errorLevel = distance(subtract(expectedPosition, positions[actor].position));
+      const position = positions[actor].position;
+      const errorLevel = distance(subtract(expectedPosition, position));
 
+      actorPositions.push(position);
       errorLevels.push(errorLevel);
     }
   };
@@ -252,7 +259,7 @@ function simulateAndFindErrorLevel(
 
   const totalError = sum(errorLevels) / frames * 1000 + size;
 
-  return totalError;
+  return {errorLevel: totalError, positions: actorPositions};
 }
 
 function isLeaf(tree: Tree): tree is Leaf {
@@ -425,10 +432,12 @@ function generateEntities(
 //type BestFitness = { [key: string]: number };
 //type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
 type BestEntities = { [actorId: string]: EntityWithFitness[] };
+export type ScenarioPositions = { [scenarioId: string]: Vector[] };
 type EntityWithFitness = {
   entity: Entity;
   fitness: number;
   errorLevels: ScenarioErrorLevels;
+  positions: ScenarioPositions;
 };
 
 function colliding(position: Vector, positions: ActorStates) {
@@ -641,11 +650,13 @@ function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
     actor: string
   ): EntityWithFitness {
     const errorLevels: {[scenarioId: string]: number} = {};
+    const scenarioPositions: ScenarioPositions = {};
 
     const fitnesses = scenarios.map(scenario => {
-      const errorLevel = simulateAndFindErrorLevel(input, entity, scenario, actor);
+      const {errorLevel, positions} = simulateAndFindErrorLevel(input, entity, scenario, actor);
 
       errorLevels[scenario.id] = errorLevel;
+      scenarioPositions[scenario.id] = positions;
 
       return errorLevel;
     });
@@ -654,7 +665,7 @@ function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
 
     errorLevels['_total'] = total / scenarios.length;
 
-    return { entity, fitness: total, errorLevels };
+    return { entity, fitness: total, errorLevels, positions: scenarioPositions };
   };
 }
 
@@ -836,7 +847,7 @@ function generateEntitiesForScenario(
   return bestSolutions[actor].slice(0, 10);
 }
 
-const MUTATE_PERCENTAGE = 0.03;
+const MUTATE_PERCENTAGE = 0.01;
 
 function mutateNode(keys: string[], random: Random, entity: Entity): Entity {
   const willMutate = random.bool(MUTATE_PERCENTAGE);
@@ -1169,7 +1180,7 @@ export function helixPi(
   // we want to run the generation for each scenario
   // and then run it using the results of both of those, with a fitness function that checks each scenario
 
-  const results: Output = { entities: {}, errorLevels: {} };
+  const results: Output = { entities: {}, errorLevels: {}, positions: {} };
 
   if (input.scenarios.length === 1) {
     input.actors.forEach(actor => {
@@ -1197,6 +1208,7 @@ export function helixPi(
 
       results.entities[actor] = tumbler(bestSolutions[0].entity);
       setErrorLevel(results.errorLevels, actor, {[scenario.id]: bestSolutions[0].fitness});
+      results.positions[actor] = bestSolutions[0].positions;
     });
   } else {
     input.actors.forEach(actor => {
@@ -1241,6 +1253,7 @@ export function helixPi(
 
       results.entities[actor] = tumbler(solutions[0].entity);
       setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
+      results.positions[actor] = solutions[0].positions;
     });
   }
 

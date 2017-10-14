@@ -243,7 +243,7 @@ function makeProject(id: string): Project {
     dragOffset: null,
     currentFrame: 0,
     lastInput: null,
-    results: { entities: {}, errorLevels: {} },
+    results: { entities: {}, errorLevels: {}, positions: {} },
     keys: ["w", "a", "s", "d"] // TODO - don't hardcode this
   };
 }
@@ -552,6 +552,8 @@ function renderSimulation(
 
         return renderActor(
           actor,
+          mini ? [] : actorPositions(project, actor.id, scenario.id),
+          frame,
           actorFrame.position.x,
           actorFrame.position.y,
           selected
@@ -559,6 +561,12 @@ function renderSimulation(
       })
     ]
   );
+}
+
+function actorPositions(project: Project, actorId: string, scenarioId: string): Vector[] {
+  const positions = project.results.positions;
+
+  return (positions[actorId] && positions[actorId][scenarioId]) || [];
 }
 
 function renderScenario(
@@ -588,44 +596,69 @@ function renderScenario(
 
 function renderActor(
   actor: Actor,
+  frames: Vector[],
+  frame: number,
   x: number,
   y: number,
   selected = false
 ): VNode {
-  const actorVTree = h("rect", {
-    class: {
-      actor: true
-    },
-    attrs: {
-      id: actor.id,
-      x: x - actor.width / 2,
-      y: y - actor.height / 2,
-      height: actor.height,
-      width: actor.width,
-      fill: actor.color
-    }
-  });
-
-  if (!selected) {
-    return actorVTree;
-  }
-
   const outlineExtraSize = 10;
 
-  return h("g", [
-    actorVTree,
+  frames = frames || [];
 
+  const children: VNode[] = [];
+
+  frames.forEach((position, index) => {
+    const isCurrent = index === frame;
+    children.push(
+      h("rect", {
+        class: {
+          "actor-preview": true
+        },
+        attrs: {
+          x: position.x - actor.width / 2,
+          y: position.y - actor.height / 2,
+          height: actor.height,
+          width: actor.width,
+          fill: isCurrent ? 'skyblue' : actor.color,
+          opacity: isCurrent ? 0.5 : 0.01
+        }
+      })
+    );
+  });
+
+  children.push(
     h("rect", {
+      class: {
+        actor: true
+      },
       attrs: {
-        x: x - actor.width / 2 - outlineExtraSize / 2,
-        y: y - actor.height / 2 - outlineExtraSize / 2,
-        height: actor.height + outlineExtraSize,
-        width: actor.width + outlineExtraSize,
-        stroke: "skyblue",
-        fill: "none"
+        id: actor.id,
+        x: x - actor.width / 2,
+        y: y - actor.height / 2,
+        height: actor.height,
+        width: actor.width,
+        fill: actor.color
       }
     })
-  ]);
+  );
+
+  if (selected) {
+    children.push(
+      h("rect", {
+        attrs: {
+          x: x - actor.width / 2 - outlineExtraSize / 2,
+          y: y - actor.height / 2 - outlineExtraSize / 2,
+          height: actor.height + outlineExtraSize,
+          width: actor.width + outlineExtraSize,
+          stroke: "skyblue",
+          fill: "none"
+        }
+      })
+    );
+  }
+
+  return h("g", children);
 }
 
 function activeScenario(project: Project): Scenario | undefined {
@@ -704,7 +737,7 @@ function ActorPanel(sources: IActorPanelSources): IActorPanelSinks {
             attrs: { height: 300, viewBox: `-150 -150 300 300` },
             style: { background: "#222" }
           },
-          [renderActor(actor, 0, 0)]
+          [renderActor(actor, [], 0, 0, 0)]
         )
       ])
     ]);
@@ -803,7 +836,9 @@ function renderErrorLevels(project: Project, errorLevels: ErrorLevels): VNode {
   return div(
     ".error-levels",
     Object.keys(errorLevels).map(actorId => {
-      const actorName = (project.actors.find(actor => actor.id === actorId) as Actor).name;
+      const actorName = (project.actors.find(
+        actor => actor.id === actorId
+      ) as Actor).name;
 
       return div(".actor-error-levels", [
         actorName,
@@ -822,7 +857,7 @@ function renderErrorLevels(project: Project, errorLevels: ErrorLevels): VNode {
           }
 
           return div(".error-level", [
-            span('.emoji', errorLevelEmoji(errorLevels[actorId][scenarioId])),
+            span(".emoji", errorLevelEmoji(errorLevels[actorId][scenarioId])),
             span(scenarioName)
           ]);
         })
@@ -1452,6 +1487,8 @@ function Player(sources: ISources): ISinks {
         ...state.actors.map(actor =>
           renderActor(
             actor,
+            [],
+            0,
             state.actorStates[actor.id].position.x,
             state.actorStates[actor.id].position.y
           )
