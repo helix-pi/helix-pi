@@ -122,3 +122,8 @@ input, button {
 .timebar .simulation {
   border: 1px solid white;
 }
+
+.emoji {
+  padding: 5px;
+  font-size: 1.1em;
+}

@@ -36,7 +36,11 @@ export type Input = {
 
 export type Output = {
   entities: { [key: string]: Entity };
+  errorLevels: ErrorLevels;
 };
+
+export type ErrorLevels = { [actorId: string]: ScenarioErrorLevels };
+export type ScenarioErrorLevels = {[scenarioId: string]: number};
 
 export type UserInput = {
   [key: number]: InputEvent[];
@@ -225,18 +229,20 @@ function simulateAndFindErrorLevel(
   const output = {
     entities: {
       [actor]: entity
-    }
+    },
+    errorLevels: {}
   };
 
+  const frames = scenario.actors[actor].length;
+
   const options = {
-    frames: scenario.actors[actor].length,
+    frames,
 
     postFrameCallback: (frame: number, positions: ActorStates) => {
       const expectedPosition = scenario.actors[actor][frame].position;
+      const errorLevel = distance(subtract(expectedPosition, positions[actor].position));
 
-      errorLevels.push(
-        distance(subtract(expectedPosition, positions[actor].position))
-      );
+      errorLevels.push(errorLevel);
     }
   };
 
@@ -244,7 +250,9 @@ function simulateAndFindErrorLevel(
 
   simulate(actor, input, scenario, output, options);
 
-  return sum(errorLevels) * 1000 + size;
+  const totalError = sum(errorLevels) / frames * 1000 + size;
+
+  return totalError;
 }
 
 function isLeaf(tree: Tree): tree is Leaf {
@@ -417,7 +425,11 @@ function generateEntities(
 //type BestFitness = { [key: string]: number };
 //type BestEntities = { [key: string]: { [key2: string]: Entity[] } };
 type BestEntities = { [actorId: string]: EntityWithFitness[] };
-type EntityWithFitness = { entity: Entity; fitness: number };
+type EntityWithFitness = {
+  entity: Entity;
+  fitness: number;
+  errorLevels: ScenarioErrorLevels;
+};
 
 function colliding(position: Vector, positions: ActorStates) {
   const allPositions = Object.keys(positions).map(
@@ -628,11 +640,21 @@ function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
     entity: Entity,
     actor: string
   ): EntityWithFitness {
-    const fitnesses = scenarios.map(scenario =>
-      simulateAndFindErrorLevel(input, entity, scenario, actor)
-    );
+    const errorLevels: {[scenarioId: string]: number} = {};
 
-    return { entity, fitness: sum(fitnesses) };
+    const fitnesses = scenarios.map(scenario => {
+      const errorLevel = simulateAndFindErrorLevel(input, entity, scenario, actor);
+
+      errorLevels[scenario.id] = errorLevel;
+
+      return errorLevel;
+    });
+
+    const total = sum(fitnesses);
+
+    errorLevels['_total'] = total / scenarios.length;
+
+    return { entity, fitness: total, errorLevels };
   };
 }
 
@@ -1111,6 +1133,16 @@ export function tumbler(code: Entity): Entity {
   });
 }
 
+function setErrorLevel(errorLevels: ErrorLevels, actor: string, scenarioErrorLevels: ScenarioErrorLevels) {
+  if (!errorLevels.hasOwnProperty(actor)) {
+    errorLevels[actor] = {};
+  }
+
+  Object.assign(errorLevels[actor], scenarioErrorLevels);
+
+  return errorLevels;
+}
+
 export function helixPi(
   input: Input,
   seed: number,
@@ -1137,7 +1169,7 @@ export function helixPi(
   // we want to run the generation for each scenario
   // and then run it using the results of both of those, with a fitness function that checks each scenario
 
-  const results: Output = { entities: {} };
+  const results: Output = { entities: {}, errorLevels: {} };
 
   if (input.scenarios.length === 1) {
     input.actors.forEach(actor => {
@@ -1164,6 +1196,7 @@ export function helixPi(
       );
 
       results.entities[actor] = tumbler(bestSolutions[0].entity);
+      setErrorLevel(results.errorLevels, actor, {[scenario.id]: bestSolutions[0].fitness});
     });
   } else {
     input.actors.forEach(actor => {
@@ -1181,7 +1214,7 @@ export function helixPi(
       );
       console.log(input.scenarios.length, scenariosForActor.length);
 
-      const entitiesForEachScenario = scenariosForActor.map(
+      const entitiesForEachScenario = flatten(scenariosForActor.map(
         scenario =>
           console.log("scenario:", scenario.name) ||
           generateEntitiesForScenario(
@@ -1191,7 +1224,7 @@ export function helixPi(
             previousSolutions,
             random.integer((-2) ** 53, 2 ** 53)
           )
-      );
+      ));
 
       console.log("final solution:", previousSolutions, previousOutput);
       const solutions = generateEntitiesForScenario(
@@ -1199,7 +1232,7 @@ export function helixPi(
         makeFitnessChecker(scenariosForActor),
         actor,
         previousSolutions.concat(
-          flatten(entitiesForEachScenario).map(
+          entitiesForEachScenario.map(
             entityWithFitness => entityWithFitness.entity
           )
         ),
@@ -1207,6 +1240,7 @@ export function helixPi(
       );
 
       results.entities[actor] = tumbler(solutions[0].entity);
+      setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
     });
   }
 

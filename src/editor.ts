@@ -7,7 +7,6 @@ import {
   input,
   a,
   h,
-  pre,
   button,
   DOMSource,
   VNode
@@ -32,9 +31,10 @@ import {
   ActorStates,
   Scenario,
   Input,
-  Output
+  Output,
+  ErrorLevels
 } from "./index";
-import { codeToString } from "./code-to-string";
+//import { codeToString } from "./code-to-string";
 import { inputEventsToRanges, InputRange } from "./input-events-to-ranges";
 import { tweenFrames } from "./tween-frames";
 import { Vector, add, subtract } from "./vector";
@@ -243,7 +243,7 @@ function makeProject(id: string): Project {
     dragOffset: null,
     currentFrame: 0,
     lastInput: null,
-    results: { entities: {} },
+    results: { entities: {}, errorLevels: {} },
     keys: ["w", "a", "s", "d"] // TODO - don't hardcode this
   };
 }
@@ -779,6 +779,58 @@ function ProjectWithDB(sources: ISources) {
   };
 }
 
+function errorLevelEmoji(errorLevel: number): string {
+  if (errorLevel < 1000) {
+    return "😎";
+  }
+
+  if (errorLevel < 5000) {
+    return "😄";
+  }
+
+  if (errorLevel < 10000) {
+    return "🙂";
+  }
+
+  if (errorLevel < 15000) {
+    return "🤔";
+  }
+
+  return "😧";
+}
+
+function renderErrorLevels(project: Project, errorLevels: ErrorLevels): VNode {
+  return div(
+    ".error-levels",
+    Object.keys(errorLevels).map(actorId => {
+      const actorName = (project.actors.find(actor => actor.id === actorId) as Actor).name;
+
+      return div(".actor-error-levels", [
+        actorName,
+
+        ...Object.keys(errorLevels[actorId]).map(scenarioId => {
+          let scenarioName = "";
+
+          if (scenarioId !== "_total") {
+            const scenario = project.scenarios.find(
+              scenario => scenario.id === scenarioId
+            ) as Scenario;
+
+            scenarioName = scenario.name;
+          } else {
+            scenarioName = "Total";
+          }
+
+          return div(".error-level", [
+            span('.emoji', errorLevelEmoji(errorLevels[actorId][scenarioId])),
+            span(scenarioName)
+          ]);
+        })
+      ]);
+    })
+  );
+}
+
 function Project(sources: IOnionifySources): IOnionifySinks {
   const project$ = sources.onion.state$;
 
@@ -1251,14 +1303,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               button(".play-game", "Play"),
 
               div(".sidebar-title", "Code preview"),
-              pre(
-                Object.keys(project.results.entities)
-                  .map(
-                    key =>
-                      key + "\n" + codeToString(project.results.entities[key])
-                  )
-                  .join("\n")
-              )
+              renderErrorLevels(project, project.results.errorLevels)
             ]),
             div(".preview", [
               project.selectedScenarioId
@@ -1318,7 +1363,7 @@ function Player(sources: ISources): ISinks {
       0: 400,
       1: 100,
       2: 700
-    }
+    };
     project.actors.forEach((actor, index) => {
       actorStates[actor.id] = {
         velocity: { x: 0, y: 0 },
