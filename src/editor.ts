@@ -26,7 +26,14 @@ import * as work from "webworkify";
 import xs, { Stream } from "xstream";
 import sampleCombine from "xstream/extra/sampleCombine";
 
-import { actorPosition, executeCode, Scenario, Input, Output, Entity } from "./index";
+import {
+  actorPosition,
+  executeCode,
+  ActorStates,
+  Scenario,
+  Input,
+  Output
+} from "./index";
 import { codeToString } from "./code-to-string";
 import { inputEventsToRanges, InputRange } from "./input-events-to-ranges";
 import { tweenFrames } from "./tween-frames";
@@ -302,6 +309,7 @@ function renderInputRange(
   i: number
 ): VNode {
   const height = 10;
+  const previewWidth = 101.82;
   return h("g", [
     h(
       "text",
@@ -320,10 +328,12 @@ function renderInputRange(
     ...inputRanges.input.map(inputRange =>
       h("rect", {
         attrs: {
-          x: 50 + inputRange.from / 60 * 93.3,
+          x: 50 + inputRange.from / 60 * previewWidth,
           y: i * height + 9,
           width:
-            50 + inputRange.to / 60 * 93.3 - (50 + inputRange.from / 60 * 93.3),
+            50 +
+            inputRange.to / 60 * previewWidth -
+            (50 + inputRange.from / 60 * previewWidth),
           height,
           fill: "yellow",
           stroke: "gold"
@@ -373,7 +383,7 @@ function renderTimeBar(
 
   const lines = new Array(100).fill(0);
 
-  const previewWidth = 93.3;
+  const previewWidth = 101.82;
 
   const controlWidth = 50;
 
@@ -432,7 +442,7 @@ function renderTimeBar(
                 "text",
                 {
                   attrs: {
-                    x: controlWidth + index * 93.3 - 3,
+                    x: controlWidth + index * previewWidth - 3,
                     y: 89,
                     fill: "#888",
                     stroke: "#888",
@@ -445,7 +455,7 @@ function renderTimeBar(
 
           h("rect", {
             attrs: {
-              x: controlWidth + index * 93.3,
+              x: controlWidth + index * previewWidth,
               y: 5,
               width: previewWidth,
               height: 70,
@@ -1243,7 +1253,10 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               div(".sidebar-title", "Code preview"),
               pre(
                 Object.keys(project.results.entities)
-                .map(key => key + '\n' + codeToString(project.results.entities[key]))
+                  .map(
+                    key =>
+                      key + "\n" + codeToString(project.results.entities[key])
+                  )
                   .join("\n")
               )
             ]),
@@ -1286,80 +1299,135 @@ function view(child: VNode): VNode {
 }
 
 interface PlayerState {
-  actorPosition: Vector;
-  code: Entity;
-  actor: Actor;
+  actorStates: ActorStates;
+  code: Output;
+  actors: Actor[];
+  currentFrame: number;
 }
 
 function Player(sources: ISources): ISinks {
-  const project$ = sources.DB.store("projects").get(sources.id as string) as Stream<Project>;
+  const project$ = sources.DB
+    .store("projects")
+    .get(sources.id as string) as Stream<Project>;
 
-  const projectState$ = project$.take(1).debug('project');
+  const projectState$ = project$.take(1).debug("project");
 
   function stateFromProject(project: Project): PlayerState {
-    const actor = project.actors[0];
+    const actorStates: ActorStates = {};
+    const x = {
+      0: 400,
+      1: 100,
+      2: 700
+    }
+    project.actors.forEach((actor, index) => {
+      actorStates[actor.id] = {
+        velocity: { x: 0, y: 0 },
+        position: { x: (x as any)[index], y: 300 }
+      };
+    });
 
     return {
-      actorPosition: {x: 300, y: 300},
-      code: project.results.entities[actor.id],
-      actor
+      actorStates,
+      code: project.results,
+      actors: project.actors,
+      currentFrame: 0
     };
   }
 
-  type KeyboardInput = {[key: string]: boolean};
+  type KeyboardInput = { [key: string]: boolean };
 
-  const keydown$ = sources.DOM.select("body").events("keydown").map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
-    return {
-      ...input,
+  const keydown$ = sources.DOM
+    .select("body")
+    .events("keydown")
+    .map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
+      return {
+        ...input,
 
-      [ev.key.toLowerCase()]: true
-    }
-  });
+        [ev.key.toLowerCase()]: true
+      };
+    });
 
-  const keyup$ = sources.DOM.select("body").events("keyup").map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
-    return {
-      ...input,
+  const keyup$ = sources.DOM
+    .select("body")
+    .events("keyup")
+    .map((ev: KeyboardEvent) => (input: KeyboardInput): KeyboardInput => {
+      return {
+        ...input,
 
-      [ev.key.toLowerCase()]: false
-    }
-  });
+        [ev.key.toLowerCase()]: false
+      };
+    });
 
-  const input$ = xs.merge(keydown$, keyup$).fold((input, reducer) => reducer(input), {});
+  const input$ = xs
+    .merge(keydown$, keyup$)
+    .fold((input, reducer) => reducer(input), {});
 
   const frame$ = sources.Time.animationFrames();
-  const state$ = projectState$.map((project) =>
-    frame$.compose(sampleCombine(input$)).fold((state, [frame, input]) => update(state, frame, input), stateFromProject(project))
-  ).flatten();
+  const state$ = projectState$
+    .map(project =>
+      frame$
+        .compose(sampleCombine(input$))
+        .fold(
+          (state, [frame, input]) => update(state, frame, input),
+          stateFromProject(project)
+        )
+    )
+    .flatten();
 
-
-  function update(state: PlayerState, frame: any, input: KeyboardInput): PlayerState {
+  function update(
+    state: PlayerState,
+    frame: any,
+    input: KeyboardInput
+  ): PlayerState {
     frame;
+    const updateActorStates = { ...state.actorStates };
+
+    state.actors.forEach(actor => {
+      updateActorStates[actor.id] = executeCode(
+        state.actorStates[actor.id],
+        state.code.entities[actor.id],
+        state.currentFrame,
+        input,
+        state.actorStates
+      );
+    });
+
     return {
       ...state,
 
-      actorPosition: executeCode(state.actorPosition, state.code, input)
-    }
+      currentFrame: state.currentFrame + 1,
+
+      actorStates: updateActorStates
+    };
   }
 
-  function renderPlayer(state: PlayerState): VNode {
+  function renderActors(state: PlayerState): VNode {
     return div([
-      h('svg', {attrs: {width: '100%', height: '100vh'}}, [
-        renderActor(state.actor, state.actorPosition.x, state.actorPosition.y)
+      h("svg", { attrs: { width: "100%", height: "100vh" } }, [
+        ...state.actors.map(actor =>
+          renderActor(
+            actor,
+            state.actorStates[actor.id].position.x,
+            state.actorStates[actor.id].position.y
+          )
+        )
       ])
-    ])
+    ]);
   }
 
   return {
-    DOM: state$.map(renderPlayer)
-  }
+    DOM: state$.map(renderActors)
+  };
 }
 
 function main(sources: ISources): ISinks {
-  const page$ = sources.Router.define({
-    "/": Home,
-    "/project/:id": (id: string) => extendSources(ProjectWithDB, { id }),
-    "/project/:id/play": (id: string) => extendSources(Player, { id })
-  }).debug('page');
+  const page$ = sources.Router
+    .define({
+      "/": Home,
+      "/project/:id": (id: string) => extendSources(ProjectWithDB, { id }),
+      "/project/:id/play": (id: string) => extendSources(Player, { id })
+    })
+    .debug("page");
 
   const newProject$ = sources.DOM
     .select(".new-project")

@@ -69,6 +69,8 @@ a:hover {
   background: #333;
   height: 100%;
   padding: 10px;
+  width: 150px;
+  min-width: 150px;
 }
 
 .project-name {
