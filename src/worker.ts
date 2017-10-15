@@ -10,10 +10,7 @@ module.exports = function(self: Worker) {
 
     console.log('input', args);
 
-    console.log(previousOutput);
     const output = helixPi(args.input, Math.random() * 10000, previousOutput);
-
-    previousOutput = output;
 
     console.log('output', output);
 

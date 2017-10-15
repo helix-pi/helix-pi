@@ -178,7 +178,7 @@ describe("Helix Pi", () => {
       ]
     };
 
-    const seed = 43;
+    const seed = 41;
     const output = helixPi(input, seed);
 
     const simulationResult = simulate("keith", input, input.scenarios[0], output, {
@@ -296,7 +296,7 @@ describe("Helix Pi", () => {
       ]
     };
 
-    const seed = 102;
+    const seed = 101;
     const output = helixPi(input, seed);
 
     const simulationResult = simulate("keith", input, input.scenarios[0], output, {

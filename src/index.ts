@@ -183,7 +183,8 @@ export type NoopMutation = {
 export type SetVelocityMutation = {
   id: string;
   type: "SetVelocityMutation";
-  change: Vector;
+  attribute: "x" | "y";
+  change: number;
 };
 
 export type Scenario = {
@@ -440,75 +441,79 @@ type EntityWithFitness = {
   positions: ScenarioPositions;
 };
 
-function colliding(position: Vector, positions: ActorStates) {
-  const allPositions = Object.keys(positions).map(
+function colliding(actor: string, position: Vector, positions: ActorStates) {
+  const otherPositions = Object.keys(positions).filter(key => key !== actor).map(
     key => positions[key].position
   );
 
-
-  const otherPositions = allPositions.filter(
-    otherPosition => distance(subtract(position, otherPosition)) > 0.1
-  );
-
-  return otherPositions.some(
+  const colliding = otherPositions.some(
     otherPosition => distance(subtract(position, otherPosition)) < 50
   );
+
+  return colliding;
 }
 
 export function executeCode(
+  actor: string,
   actorState: ActorState,
   code: Entity,
   currentFrame: number,
   input: InputState,
-  actorPositions: ActorStates
+  actorPositions: ActorStates,
+  depth = 0
 ): ActorState {
   let { velocity, position } = actorState;
+  let updatedActorState = actorState;
 
-  position = add(position, velocity);
+  if (depth === 0) {
+    position = add(velocity, position)
+
+    updatedActorState = { ...actorState, position };
+  }
 
   if (code.type === "move") {
     if (code.direction === "left") {
       return {
-        velocity,
+        ...updatedActorState,
         position: { ...position, x: position.x - code.amount }
       };
     }
 
     if (code.direction === "up") {
       return {
-        velocity,
+        ...updatedActorState,
         position: { ...position, y: position.y - code.amount }
       };
     }
 
     if (code.direction === "down") {
       return {
-        velocity,
+        ...updatedActorState,
         position: { ...position, y: position.y + code.amount }
       };
     }
 
     if (code.direction === "right") {
       return {
-        velocity,
+        ...updatedActorState,
         position: { ...position, x: position.x + code.amount }
       };
     }
   }
 
   if (code.type === "setVelocity") {
-    return { ...actorState, velocity: code.velocity };
+    return { ...updatedActorState, velocity: code.velocity};
   }
 
   if (code.type === "multiplyVelocity") {
-    return { ...actorState, velocity: multiply(actorState.velocity, code.scalar) };
+    return { ...updatedActorState, velocity: multiply(actorState.velocity, code.scalar) };
   }
 
   if (code.type === "sequence") {
     return code.children.reduce(
       (actorState, entity) =>
-        executeCode(actorState, entity, currentFrame, input, actorPositions),
-      actorState
+        executeCode(actor, actorState, entity, currentFrame, input, actorPositions, depth + 1),
+      updatedActorState
     );
   }
 
@@ -519,27 +524,32 @@ export function executeCode(
   if (code.type === "inputConditional") {
     if (input[code.key]) {
       return executeCode(
-        actorState,
+        actor,
+        updatedActorState,
         code.children[0],
         currentFrame,
         input,
-        actorPositions
+        actorPositions,
+        depth + 1
       );
     } else {
       return executeCode(
-        actorState,
+        actor,
+        updatedActorState,
         code.children[1],
         currentFrame,
         input,
-        actorPositions
+        actorPositions,
+        depth + 1
       );
     }
   }
 
   if (code.type === "collisionConditional") {
-    if (colliding(position, actorPositions)) {
+    if (colliding(actor, position, actorPositions)) {
       return executeCode(
-        actorState,
+        actor,
+        updatedActorState,
         code.children[0],
         currentFrame,
         input,
@@ -547,7 +557,8 @@ export function executeCode(
       );
     } else {
       return executeCode(
-        actorState,
+        actor,
+        updatedActorState,
         code.children[1],
         currentFrame,
         input,
@@ -559,14 +570,15 @@ export function executeCode(
   if (code.type === "onCreate") {
     if (currentFrame === 0) {
       return executeCode(
-        actorState,
+        actor,
+        updatedActorState,
         code.children[0],
         currentFrame,
         input,
         actorPositions
       );
     } else {
-      return actorState;
+      return updatedActorState;
     }
   }
 
@@ -616,6 +628,7 @@ export function simulate(
     actors.forEach(actor => {
       if (activeActor === actor) {
         states[actor] = executeCode(
+          actor,
           states[actor],
           output.entities[actor],
           currentFrame,
@@ -847,7 +860,7 @@ function generateEntitiesForScenario(
   return bestSolutions[actor].slice(0, 10);
 }
 
-const MUTATE_PERCENTAGE = 0.01;
+const MUTATE_PERCENTAGE = 0.02;
 
 function mutateNode(keys: string[], random: Random, entity: Entity): Entity {
   const willMutate = random.bool(MUTATE_PERCENTAGE);
@@ -948,7 +961,11 @@ function applyMutation(entity: Entity, mutation: Mutation): Entity {
 
       id: `(${entity.id}%${mutation.id})`,
 
-      velocity: add(setVelocity.velocity, mutation.change)
+      velocity: {
+        ...setVelocity.velocity,
+
+        [mutation.attribute]: setVelocity.velocity[mutation.attribute] + mutation.change
+      }
     };
   }
 
@@ -1093,14 +1110,13 @@ function chooseMutation(
   }
 
   if (entity.type === "setVelocity") {
+    const attribute = random.pick(["x", "y"]) as any;
+
     return {
       type: "SetVelocityMutation",
       id: seed.toString(),
-
-      change: {
-        x: random.integer(-10, 10) / 10,
-        y: random.integer(-10, 10) / 10
-      }
+      attribute,
+      change: random.integer(-1, 1) / 10
     };
   }
 
@@ -1182,80 +1198,77 @@ export function helixPi(
 
   const results: Output = { entities: {}, errorLevels: {}, positions: {} };
 
-  if (input.scenarios.length === 1) {
-    input.actors.forEach(actor => {
-      console.log("Generating for", actor);
-      const scenario = input.scenarios[0];
-
-      if (!(actor in scenario.actors)) {
-        return;
-      }
-
-      const fitness = makeFitnessChecker([scenario]);
-      let previousSolutions: Entity[] = [];
-
-      if (previousOutput && previousOutput.entities[actor]) {
-        previousSolutions = [previousOutput.entities[actor]];
-      }
-
-      const bestSolutions = generateEntitiesForScenario(
-        input,
-        fitness,
-        actor,
-        previousSolutions,
-        seed
-      );
-
-      results.entities[actor] = tumbler(bestSolutions[0].entity);
-      setErrorLevel(results.errorLevels, actor, {[scenario.id]: bestSolutions[0].fitness});
-      results.positions[actor] = bestSolutions[0].positions;
-    });
-  } else {
-    input.actors.forEach(actor => {
-      console.log("Generating for", actor);
-      const random = new Random(Random.engines.mt19937().seed(seed));
-
-      let previousSolutions: Entity[] = [];
-
-      if (previousOutput && previousOutput.entities[actor]) {
-        previousSolutions = [previousOutput.entities[actor]];
-      }
-
+  input.actors.forEach(actor => {
       const scenariosForActor = input.scenarios.filter(
         scenario => actor in scenario.actors
       );
-      console.log(input.scenarios.length, scenariosForActor.length);
 
-      const entitiesForEachScenario = flatten(scenariosForActor.map(
-        scenario =>
-          console.log("scenario:", scenario.name) ||
-          generateEntitiesForScenario(
-            input,
-            makeFitnessChecker([scenario]),
-            actor,
-            previousSolutions,
-            random.integer((-2) ** 53, 2 ** 53)
-          )
-      ));
+    if (scenariosForActor.length === 1) {
+        console.log("Generating for", actor);
+        const scenario = scenariosForActor[0];
 
-      console.log("final solution:", previousSolutions, previousOutput);
-      const solutions = generateEntitiesForScenario(
-        input,
-        makeFitnessChecker(scenariosForActor),
-        actor,
-        previousSolutions.concat(
-          entitiesForEachScenario.map(
-            entityWithFitness => entityWithFitness.entity
-          )
-        ),
-        random.integer((-2) ** 53, 2 ** 53)
-      );
+        if (!(actor in scenario.actors)) {
+          return;
+        }
 
-      results.entities[actor] = tumbler(solutions[0].entity);
-      setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
-      results.positions[actor] = solutions[0].positions;
-    });
-  }
+        const fitness = makeFitnessChecker([scenario]);
+        let previousSolutions: Entity[] = [];
+
+        if (previousOutput && previousOutput.entities[actor]) {
+          previousSolutions = [previousOutput.entities[actor]];
+        }
+
+        const bestSolutions = generateEntitiesForScenario(
+          input,
+          fitness,
+          actor,
+          previousSolutions,
+          seed
+        );
+
+        results.entities[actor] = tumbler(bestSolutions[0].entity);
+        setErrorLevel(results.errorLevels, actor, {[scenario.id]: bestSolutions[0].fitness});
+        results.positions[actor] = bestSolutions[0].positions;
+    } else {
+        console.log("Generating for", actor);
+        const random = new Random(Random.engines.mt19937().seed(seed));
+
+        let previousSolutions: Entity[] = [];
+
+        if (previousOutput && previousOutput.entities[actor]) {
+          previousSolutions = [previousOutput.entities[actor]];
+        }
+
+        const entitiesForEachScenario = flatten(scenariosForActor.map(
+          scenario =>
+            console.log("scenario:", scenario.name) ||
+            generateEntitiesForScenario(
+              input,
+              makeFitnessChecker([scenario]),
+              actor,
+              previousSolutions,
+              random.integer((-2) ** 53, 2 ** 53)
+            )
+        ));
+
+        console.log("final solution:", previousSolutions, previousOutput);
+        const solutions = generateEntitiesForScenario(
+          input,
+          makeFitnessChecker(scenariosForActor),
+          actor,
+          previousSolutions.concat(
+            entitiesForEachScenario.map(
+              entityWithFitness => entityWithFitness.entity
+            )
+          ),
+          random.integer((-2) ** 53, 2 ** 53)
+        );
+
+        results.entities[actor] = tumbler(solutions[0].entity);
+        setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
+        results.positions[actor] = solutions[0].positions;
+    }
+  });
 
   return results;
 }

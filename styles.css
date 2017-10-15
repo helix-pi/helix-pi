@@ -70,7 +70,7 @@ a:hover {
   height: 100%;
   padding: 10px;
   width: 150px;
-  min-width: 150px;
+  min-width: 200px;
 }
 
 .project-name {
@@ -125,5 +125,10 @@ input, button {
 
 .emoji {
   padding: 5px;
-  font-size: 1.1em;
+  font-size: 1.5em;
+}
+
+.error-levels {
+  overflow: scroll;
+  margin: 5px;
 }

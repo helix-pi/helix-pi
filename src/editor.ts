@@ -250,6 +250,7 @@ function makeProject(id: string): Project {
 
 function renderScenarioButton(scenario: Scenario): VNode {
   return div(".scenario-button", [
+    a(".delete-scenario", { attrs: { "data-id": scenario.id } }, '✖︎'),
     a(".select-scenario", { attrs: { "data-id": scenario.id } }, scenario.name)
   ]);
 }
@@ -829,7 +830,12 @@ function errorLevelEmoji(errorLevel: number): string {
     return "🤔";
   }
 
-  return "😧";
+  if (errorLevel < 30000) {
+    return "😧";
+  }
+  
+
+  return "😵";
 }
 
 function renderErrorLevels(project: Project, errorLevels: ErrorLevels): VNode {
@@ -849,9 +855,9 @@ function renderErrorLevels(project: Project, errorLevels: ErrorLevels): VNode {
           if (scenarioId !== "_total") {
             const scenario = project.scenarios.find(
               scenario => scenario.id === scenarioId
-            ) as Scenario;
+            );
 
-            scenarioName = scenario.name;
+            scenarioName = scenario && scenario.name || "";
           } else {
             scenarioName = "Total";
           }
@@ -964,6 +970,8 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       return actorId;
     });
 
+  const mouseUp$ = sources.DOM.select("document").events("mouseup");
+
   const clearActorSelection$ = sources.DOM
     .select(".simulation.main")
     .events("mousedown")
@@ -992,10 +1000,16 @@ function Project(sources: IOnionifySources): IOnionifySinks {
 
   const animationFrame$ = sources.Time.animationFrames();
 
-  const advanceFrame$ = playing$
-    .map(playing =>
+  const movingActor$ = xs.merge(actorMouseDown$.mapTo(true), mouseUp$.mapTo(false));
+
+  const advanceFrame$ = xs.combine(playing$, recording$, movingActor$)
+    .map(([playing, recording, movingActor]) =>
       animationFrame$.filter(() => playing).map(() => {
         return function(project: Project): Project {
+          if (recording && !movingActor) {
+            return project;
+          }
+
           if (project.currentFrame > 60 * 8) {
             return {
               ...project,
@@ -1018,8 +1032,6 @@ function Project(sources: IOnionifySources): IOnionifySinks {
       mouseMove$.map(position => mousePositionOnSvg(position, svg))
     )
     .flatten();
-
-  const mouseUp$ = sources.DOM.select("document").events("mouseup");
 
   const moveActor$ = actorMouseDown$
     .map(actorId =>
@@ -1108,6 +1120,33 @@ function Project(sources: IOnionifySources): IOnionifySinks {
 
         actors: project.actors.concat(actor)
       };
+    });
+
+  const deleteScenario$ = sources.DOM
+    .select(".delete-scenario")
+    .events("click")
+    .map(ev => (project: Project): Project => {
+      const scenarioId = (ev.currentTarget as any).dataset.id;
+      const currentlySelected = project.selectedScenarioId === scenarioId;
+      const scenarios = project.scenarios.filter(scenario => scenario.id !== scenarioId);
+
+      if (currentlySelected) {
+        return {
+          ...project,
+
+          scenarios,
+
+          currentFrame: 0,
+
+          selectedScenarioId: scenarios[0].id
+        };
+      } else {
+        return {
+          ...project,
+
+          scenarios
+        };
+      }
     });
 
   const selectScenario$ = sources.DOM
@@ -1266,11 +1305,27 @@ function Project(sources: IOnionifySources): IOnionifySinks {
     output => (project: Project): Project => ({ ...project, results: output })
   );
 
+  const deleteCode$ = sources.DOM.select(".delete-code").events("click").map(() => {
+    return function (project: Project): Project {
+      return {
+        ...project,
+
+        results: {
+          entities: {},
+          errorLevels: {},
+          positions: {}
+        }
+      }
+    }
+  });
+
   const reducer$ = xs.merge(
     sources.initialState$.take(1).map(project => () => project),
+    deleteCode$,
     changeName$,
     addScenario$,
     selectScenario$,
+    deleteScenario$,
     changeScenarioName$,
     addActor$,
     selectActor$,
@@ -1338,6 +1393,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
               button(".play-game", "Play"),
 
               div(".sidebar-title", "Code preview"),
+              button(".delete-code", "Delete code"),
               renderErrorLevels(project, project.results.errorLevels)
             ]),
             div(".preview", [
@@ -1464,6 +1520,7 @@ function Player(sources: ISources): ISinks {
 
     state.actors.forEach(actor => {
       updateActorStates[actor.id] = executeCode(
+        actor.id,
         state.actorStates[actor.id],
         state.code.entities[actor.id],
         state.currentFrame,
