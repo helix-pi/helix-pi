@@ -23,6 +23,15 @@ import * as Random from "random-js";
 
 import { Vector, distance, subtract, add, multiply } from "./vector";
 
+const boxCollide = require('box-collide');
+
+type Box = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const MAX_SEQUENCE_CHILD_COUNT = 3;
 const MAX_SEED = Math.pow(2, 32);
 const MIN_SEED = 0;
@@ -30,9 +39,18 @@ const MIN_SEED = 0;
 export type Input = {
   keys: string[];
   scenarios: Scenario[];
-  actors: string[];
+  actors: { [actorId: string]: Actor };
   results?: Output;
 };
+
+export interface Actor {
+  id: string;
+  name: string;
+
+  width: number;
+  height: number;
+  color: string;
+}
 
 export type Output = {
   entities: { [key: string]: Entity };
@@ -119,7 +137,7 @@ export type Noop = {
   id: string;
 };
 
-export type Mutation = BranchMutation | LeafMutation;
+export type Mutation = BranchMutation | LeafMutation | ConvertToNoopMutation;
 
 export type BranchMutation =
   | SequenceMutation
@@ -140,6 +158,11 @@ export type MultiplyVelocityMutation = {
   id: string;
   type: "MultiplyVelocityMutation";
   amount: number;
+}
+
+export type ConvertToNoopMutation = {
+  id: string;
+  type: "ConvertToNoopMutation";
 }
 
 export type NewEntityMutation = {
@@ -211,6 +234,13 @@ export type ActorStates = {
 export type ActorState = {
   position: Vector;
   velocity: Vector;
+  width: number;
+  height: number;
+  colliding: boolean;
+};
+
+export type Collision = {
+  actorId: string;
 };
 
 export type EntityErrorLevels = {
@@ -342,13 +372,28 @@ export function generateEntity(
     }
 
     if (command === "setVelocity") {
-      const x = random.integer(-20, 20) / 20;
-      const y = random.integer(-20, 20) / 20;
+      let velocity;
+
+      if (random.bool(0.5)) { // cardinal direction
+        const scalar = random.integer(0, 20) / 20;
+
+        velocity = random.pick([
+          {x: 0, y: -scalar},
+          {x: scalar, y: 0},
+          {x: -scalar, y: 0},
+          {x: 0, y: scalar},
+        ]);
+      } else {
+        velocity = {
+          x: random.integer(-20, 20) / 20,
+          y: random.integer(-20, 20) / 20
+        }
+      }
 
       return {
         type: command,
         id: seed.toString(),
-        velocity: { x, y }
+        velocity
       };
     }
 
@@ -380,7 +425,7 @@ export function generateEntity(
       return {
         type: command,
         id: seed.toString(),
-        children: makeChildren(random, 2, keys, depth)
+        children: makeChildren(random, 1, keys, depth)
       };
     }
 
@@ -441,13 +486,13 @@ type EntityWithFitness = {
   positions: ScenarioPositions;
 };
 
-function colliding(actor: string, position: Vector, positions: ActorStates) {
+function colliding(actor: string, position: Box, positions: ActorStates): boolean {
   const otherPositions = Object.keys(positions).filter(key => key !== actor).map(
-    key => positions[key].position
+    key => ({...positions[key].position, width: positions[key].width, height: positions[key].height})
   );
 
   const colliding = otherPositions.some(
-    otherPosition => distance(subtract(position, otherPosition)) < 50
+    otherPosition => boxCollide(position, otherPosition)
   );
 
   return colliding;
@@ -546,7 +591,20 @@ export function executeCode(
   }
 
   if (code.type === "collisionConditional") {
-    if (colliding(actor, position, actorPositions)) {
+    const box = {
+      ...actorState.position,
+      width: actorState.width,
+      height: actorState.height
+    };
+
+    // TODO - this doesn't actually work, because this logic might run multiple
+    //        times in a frame. we need to only run this once per frame.
+    //    const previouslyColliding = actorState.colliding;
+    const nowColliding = colliding(actor, box, actorPositions);
+
+    updatedActorState.colliding = nowColliding;
+
+    if (nowColliding) {
       return executeCode(
         actor,
         updatedActorState,
@@ -556,14 +614,7 @@ export function executeCode(
         actorPositions
       );
     } else {
-      return executeCode(
-        actor,
-        updatedActorState,
-        code.children[1],
-        currentFrame,
-        input,
-        actorPositions
-      );
+      return updatedActorState;
     }
   }
 
@@ -602,7 +653,10 @@ export function simulate(
   actors.forEach(actor => {
     states[actor] = {
       position: { ...scenario.actors[actor][0].position },
-      velocity: { x: 0, y: 0 }
+      velocity: { x: 0, y: 0 },
+      width: input.actors[actor].width,
+      height: input.actors[actor].height,
+      colliding: false
     };
   });
 
@@ -636,10 +690,19 @@ export function simulate(
           states
         );
       } else {
+        const actorObj = input.actors[actor];
+
+        if (!actorObj) {
+          throw new Error('Could not find actor');
+        }
+
         states[actor] = {
           position: actorPosition(scenario.actors[actor], currentFrame)
             .position,
-          velocity: { x: 0, y: 0 }
+          velocity: { x: 0, y: 0 },
+          width: actorObj.width,
+          height: actorObj.height,
+          colliding: false
         };
       }
     });
@@ -985,6 +1048,13 @@ function applyMutation(entity: Entity, mutation: Mutation): Entity {
     return { ...entity };
   }
 
+  if (mutation.type === "ConvertToNoopMutation") {
+    return {
+      type: "noop",
+      id: entity.id
+    }
+  }
+
   throw new Error(`Unimplemented mutation ${(mutation as Mutation).type}`);
 }
 
@@ -994,6 +1064,13 @@ function chooseMutation(
   entity: Entity
 ): Mutation {
   const random = new Random(Random.engines.mt19937().seed(seed));
+
+  if (random.bool(0.5)) {
+    return {
+      id: seed.toString(),
+      type: "ConvertToNoopMutation"
+    }
+  }
 
   if (entity.type === "sequence") {
     const types = [
@@ -1068,10 +1145,22 @@ function chooseMutation(
     };
   }
 
-  if (
-    entity.type === "inputConditional" ||
-    entity.type === "collisionConditional"
-  ) {
+  if (entity.type === "collisionConditional") {
+    const newEntity = generateEntity(
+      random.integer(MIN_SEED, MAX_SEED),
+      keys,
+      0
+    );
+
+    return {
+      id: seed.toString(),
+      type: "ReplaceMutation",
+      newEntity,
+      spliceIndex: random.pick([0, 1])
+    };
+  }
+
+  if ( entity.type === "inputConditional") {
     const types = ["SwitchMutation", "ReplaceMutation"];
 
     const mutationType = random.pick(types);
@@ -1155,6 +1244,16 @@ export function tumbler(code: Entity): Entity {
         };
       }
 
+      if (node.type === "sequence") {
+        return {
+          ...node,
+          id: "tumbler-flatten",
+          children: flatten(node.children.map(node =>
+            node.type === "sequence" ? node.children : [node]
+          ))
+        }
+      }
+
       return node;
     }
   });
@@ -1175,30 +1274,9 @@ export function helixPi(
   seed: number,
   previousOutput: Output | null = null
 ): Output {
-  // Given a collection of scenarios, and a collection of actors
-  // We want to generate code so that each actor performs the desired behaviour in each scenario
-  //
-  // Consider a situation where we have one scenario and one actor
-  //
-  // Assuming we have no existing solutions, we want to generate a population's worth of new ones
-  //
-  // We then want to find the fitness of each individual in the population. We
-  // can do this by simulating the solution for the given actor in the scenario,
-  // and then getting a number back representing the distance from the expected
-  // points
-  //
-  // If we have found an optimal solution (ie fitness of 0), return it!
-  // If not, we want to iterate
-  //
-  //
-  //
-  // if we have two scenarios, and one actor
-  // we want to run the generation for each scenario
-  // and then run it using the results of both of those, with a fitness function that checks each scenario
-
   const results: Output = { entities: {}, errorLevels: {}, positions: {} };
 
-  input.actors.forEach(actor => {
+  Object.keys(input.actors).forEach(actor => {
       const scenariosForActor = input.scenarios.filter(
         scenario => actor in scenario.actors
       );

@@ -7,6 +7,7 @@ import {
   input,
   a,
   h,
+  pre,
   button,
   DOMSource,
   VNode
@@ -28,6 +29,7 @@ import sampleCombine from "xstream/extra/sampleCombine";
 import {
   actorPosition,
   executeCode,
+  Actor,
   ActorStates,
   Scenario,
   Input,
@@ -55,15 +57,6 @@ interface Project {
   scenarios: Scenario[];
   actors: Actor[];
   results: Output;
-}
-
-interface Actor {
-  id: string;
-  name: string;
-
-  width: number;
-  height: number;
-  color: string;
 }
 
 interface ISources {
@@ -114,8 +107,16 @@ function projectToHelixPiInput(project: Project): Input {
   return {
     keys: project.keys,
     scenarios: project.scenarios.map(tweenFramesInScenario),
-    actors: project.actors.map(actor => actor.id)
+    actors: index(project.actors, actor => actor.id)
   };
+}
+
+function index<T>(array: T[], indexSelector: (t: T) => string): {[key: string]: T} {
+  const result: {[key: string]: T} = {};
+
+  array.forEach(item => result[indexSelector(item)] = item);
+
+  return result;
 }
 
 function homeView(projects: Project[]): VNode {
@@ -814,24 +815,28 @@ function ProjectWithDB(sources: ISources) {
 }
 
 function errorLevelEmoji(errorLevel: number): string {
-  if (errorLevel < 1000) {
+  if (errorLevel < 2000) {
     return "😎";
   }
 
-  if (errorLevel < 5000) {
+  if (errorLevel < 1000) {
     return "😄";
   }
 
-  if (errorLevel < 10000) {
+  if (errorLevel < 20000) {
     return "🙂";
   }
 
-  if (errorLevel < 15000) {
+  if (errorLevel < 30000) {
     return "🤔";
   }
 
-  if (errorLevel < 30000) {
-    return "😧";
+  if (errorLevel < 60000) {
+    return "😣";
+  }
+
+  if (errorLevel < 100000) {
+    return "😖";
   }
   
 
@@ -1266,6 +1271,7 @@ function Project(sources: IOnionifySources): IOnionifySinks {
                     ...scenario,
 
                     selectedScenarioObject: actor.id,
+                    selectedActorId: actor.id,
 
                     actors: {
                       ...scenario.actors,
@@ -1451,14 +1457,17 @@ function Player(sources: ISources): ISinks {
   function stateFromProject(project: Project): PlayerState {
     const actorStates: ActorStates = {};
     const x = {
-      0: 400,
-      1: 100,
+      1: 400,
+      0: 100,
       2: 700
     };
     project.actors.forEach((actor, index) => {
       actorStates[actor.id] = {
         velocity: { x: 0, y: 0 },
-        position: { x: (x as any)[index], y: 300 }
+        position: { x: (x as any)[index], y: 300 },
+        height: actor.height,
+        width: actor.width,
+        colliding: false
       };
     });
 
@@ -1540,6 +1549,7 @@ function Player(sources: ISources): ISinks {
 
   function renderActors(state: PlayerState): VNode {
     return div([
+      pre('.debug-text', JSON.stringify(state.actorStates, null, 2)),
       h("svg", { attrs: { width: "100%", height: "100vh" } }, [
         ...state.actors.map(actor =>
           renderActor(

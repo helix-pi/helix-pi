@@ -103,4 +103,50 @@ describe("tumbler", () => {
 
     assert.deepEqual(tumbler(code), expected);
   });
+
+  it("removes nested sequences", () => {
+    const code: Entity = {
+      type: "sequence",
+      id: "0",
+      children: [
+        {
+          type: "sequence",
+          id: "1",
+          children: [
+            {
+              type: "sequence",
+              id: "1",
+              children: [
+                {
+                  type: "setVelocity",
+                  id: "2947694081",
+                  velocity: {
+                    x: -0.05,
+                    y: -0.8
+                  }
+                },
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const expected = {
+      type: "sequence",
+      id: "tumbler-flatten",
+      children: [
+        {
+          type: "setVelocity",
+          id: "2947694081",
+          velocity: {
+            x: -0.05,
+            y: -0.8
+          }
+        }
+      ]
+    };
+
+    assert.deepEqual(tumbler(code), expected);
+  });
 });

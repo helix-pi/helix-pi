@@ -132,3 +132,9 @@ input, button {
   overflow: scroll;
   margin: 5px;
 }
+
+.debug-text {
+  position: absolute;
+  right: 100px;
+  width: 400px;
+}

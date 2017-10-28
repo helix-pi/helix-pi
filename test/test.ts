@@ -16,7 +16,7 @@ function assertCloseEnough(a: any, b: any): void {
 
       const proportion = difference / Math.abs(aValue);
 
-      if (proportion > 0.1) {
+      if (proportion > 0.15) {
         throw new Error(`Expected ${key} to equal ${bValue} got ${aValue}`);
       }
     }
@@ -36,7 +36,7 @@ describe("Helix Pi", () => {
     // simulate the behaviour of the returned entities
     // check if they match the described behaviour of the actors in the scenario
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
       keys: [],
 
       scenarios: [
@@ -73,7 +73,7 @@ describe("Helix Pi", () => {
 
   it("can go left", () => {
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
       keys: [],
 
       scenarios: [
@@ -114,7 +114,7 @@ describe("Helix Pi", () => {
   it("can go up and to the right", () => {
 
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
       keys: [],
 
       scenarios: [
@@ -154,7 +154,7 @@ describe("Helix Pi", () => {
 
   it("can go down and to the left", () => {
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
       keys: [],
       scenarios: [
         {
@@ -178,7 +178,7 @@ describe("Helix Pi", () => {
       ]
     };
 
-    const seed = 41;
+    const seed = 44;
     const output = helixPi(input, seed);
 
     const simulationResult = simulate("keith", input, input.scenarios[0], output, {
@@ -193,7 +193,7 @@ describe("Helix Pi", () => {
 
   it("responds to input", () => {
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
 
       keys: ["Right"],
 
@@ -240,7 +240,7 @@ describe("Helix Pi", () => {
 
   it("handles multiple scenarios", () => {
     const input = {
-      actors: ["keith"],
+      actors: {"keith": {id: "keith", name: "Keith", width: 50, height: 50, color: 'white'}},
 
       keys: ["Right", "Left"],
 
