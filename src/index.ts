@@ -23,14 +23,14 @@ import * as Random from "random-js";
 
 import { Vector, distance, subtract, add, multiply } from "./vector";
 
-const boxCollide = require('box-collide');
+const boxCollide = require("box-collide");
 
 type Box = {
   x: number;
   y: number;
   width: number;
   height: number;
-}
+};
 
 const MAX_SEQUENCE_CHILD_COUNT = 3;
 const MAX_SEED = Math.pow(2, 32);
@@ -59,7 +59,7 @@ export type Output = {
 };
 
 export type ErrorLevels = { [actorId: string]: ScenarioErrorLevels };
-export type ScenarioErrorLevels = {[scenarioId: string]: number};
+export type ScenarioErrorLevels = { [scenarioId: string]: number };
 
 export type UserInput = {
   [key: number]: InputEvent[];
@@ -144,7 +144,11 @@ export type BranchMutation =
   | InputConditionalMutation
   | OnCreateMutation;
 
-export type LeafMutation = MoveMutation | NoopMutation | SetVelocityMutation | MultiplyVelocityMutation;
+export type LeafMutation =
+  | MoveMutation
+  | NoopMutation
+  | SetVelocityMutation
+  | MultiplyVelocityMutation;
 
 export type SequenceMutation =
   | NewEntityMutation
@@ -158,12 +162,12 @@ export type MultiplyVelocityMutation = {
   id: string;
   type: "MultiplyVelocityMutation";
   amount: number;
-}
+};
 
 export type ConvertToNoopMutation = {
   id: string;
   type: "ConvertToNoopMutation";
-}
+};
 
 export type NewEntityMutation = {
   id: string;
@@ -251,7 +255,7 @@ function sum(array: number[]): number {
   return array.reduce((a, b) => a + b, 0);
 }
 
-type ErrorLevelAndPositions = {errorLevel: number; positions: Vector[]};
+type ErrorLevelAndPositions = { errorLevel: number; positions: Vector[] };
 
 function simulateAndFindErrorLevel(
   input: Input,
@@ -290,7 +294,7 @@ function simulateAndFindErrorLevel(
 
   const totalError = sum(errorLevels) / frames * 1000 + size;
 
-  return {errorLevel: totalError, positions: actorPositions};
+  return { errorLevel: totalError, positions: actorPositions };
 }
 
 function isLeaf(tree: Tree): tree is Leaf {
@@ -374,20 +378,21 @@ export function generateEntity(
     if (command === "setVelocity") {
       let velocity;
 
-      if (random.bool(0.5)) { // cardinal direction
+      if (random.bool(0.5)) {
+        // cardinal direction
         const scalar = random.integer(0, 20) / 20;
 
         velocity = random.pick([
-          {x: 0, y: -scalar},
-          {x: scalar, y: 0},
-          {x: -scalar, y: 0},
-          {x: 0, y: scalar},
+          { x: 0, y: -scalar },
+          { x: scalar, y: 0 },
+          { x: -scalar, y: 0 },
+          { x: 0, y: scalar }
         ]);
       } else {
         velocity = {
           x: random.integer(-20, 20) / 20,
           y: random.integer(-20, 20) / 20
-        }
+        };
       }
 
       return {
@@ -486,13 +491,21 @@ type EntityWithFitness = {
   positions: ScenarioPositions;
 };
 
-function colliding(actor: string, position: Box, positions: ActorStates): boolean {
-  const otherPositions = Object.keys(positions).filter(key => key !== actor).map(
-    key => ({...positions[key].position, width: positions[key].width, height: positions[key].height})
-  );
+function colliding(
+  actor: string,
+  position: Box,
+  positions: ActorStates
+): boolean {
+  const otherPositions = Object.keys(positions)
+    .filter(key => key !== actor)
+    .map(key => ({
+      ...positions[key].position,
+      width: positions[key].width,
+      height: positions[key].height
+    }));
 
-  const colliding = otherPositions.some(
-    otherPosition => boxCollide(position, otherPosition)
+  const colliding = otherPositions.some(otherPosition =>
+    boxCollide(position, otherPosition)
   );
 
   return colliding;
@@ -511,7 +524,7 @@ export function executeCode(
   let updatedActorState = actorState;
 
   if (depth === 0) {
-    position = add(velocity, position)
+    position = add(velocity, position);
 
     updatedActorState = { ...actorState, position };
   }
@@ -547,17 +560,28 @@ export function executeCode(
   }
 
   if (code.type === "setVelocity") {
-    return { ...updatedActorState, velocity: code.velocity};
+    return { ...updatedActorState, velocity: code.velocity };
   }
 
   if (code.type === "multiplyVelocity") {
-    return { ...updatedActorState, velocity: multiply(actorState.velocity, code.scalar) };
+    return {
+      ...updatedActorState,
+      velocity: multiply(actorState.velocity, code.scalar)
+    };
   }
 
   if (code.type === "sequence") {
     return code.children.reduce(
       (actorState, entity) =>
-        executeCode(actor, actorState, entity, currentFrame, input, actorPositions, depth + 1),
+        executeCode(
+          actor,
+          actorState,
+          entity,
+          currentFrame,
+          input,
+          actorPositions,
+          depth + 1
+        ),
       updatedActorState
     );
   }
@@ -693,7 +717,7 @@ export function simulate(
         const actorObj = input.actors[actor];
 
         if (!actorObj) {
-          throw new Error('Could not find actor');
+          throw new Error("Could not find actor");
         }
 
         states[actor] = {
@@ -725,11 +749,16 @@ function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
     entity: Entity,
     actor: string
   ): EntityWithFitness {
-    const errorLevels: {[scenarioId: string]: number} = {};
+    const errorLevels: { [scenarioId: string]: number } = {};
     const scenarioPositions: ScenarioPositions = {};
 
     const fitnesses = scenarios.map(scenario => {
-      const {errorLevel, positions} = simulateAndFindErrorLevel(input, entity, scenario, actor);
+      const { errorLevel, positions } = simulateAndFindErrorLevel(
+        input,
+        entity,
+        scenario,
+        actor
+      );
 
       errorLevels[scenario.id] = errorLevel;
       scenarioPositions[scenario.id] = positions;
@@ -739,9 +768,14 @@ function makeFitnessChecker(scenarios: Scenario[]): FitnessFunction {
 
     const total = sum(fitnesses);
 
-    errorLevels['_total'] = total / scenarios.length;
+    errorLevels["_total"] = total / scenarios.length;
 
-    return { entity, fitness: total, errorLevels, positions: scenarioPositions };
+    return {
+      entity,
+      fitness: total,
+      errorLevels,
+      positions: scenarioPositions
+    };
   };
 }
 
@@ -778,6 +812,27 @@ function findNode(entity: Entity, id: string): Entity | null {
   return entity.children.map(child => findNode(child, id)).filter(Boolean)[0];
 }
 
+function selectNode<T>(
+  entity: Entity,
+  selector: (e: Entity) => T | null
+): T | null {
+  const result = selector(entity);
+  if (result) {
+    return result;
+  }
+
+  if (isLeaf(entity)) {
+    return null;
+  }
+
+  for (const child of entity.children) {
+    const result = selectNode(child, selector);
+
+    if (result) return result;
+  }
+
+  return null;
+}
 function swap(random: Random, mum: Entity, dad: Entity): Entity[] {
   const nodeToSwapFromMum = findNode(mum, random.pick(nodeIds(mum))) as Entity;
   const nodeToSwapFromDad = findNode(dad, random.pick(nodeIds(dad))) as Entity;
@@ -1027,7 +1082,8 @@ function applyMutation(entity: Entity, mutation: Mutation): Entity {
       velocity: {
         ...setVelocity.velocity,
 
-        [mutation.attribute]: setVelocity.velocity[mutation.attribute] + mutation.change
+        [mutation.attribute]:
+          setVelocity.velocity[mutation.attribute] + mutation.change
       }
     };
   }
@@ -1041,7 +1097,7 @@ function applyMutation(entity: Entity, mutation: Mutation): Entity {
       id: `(${entity.id}%${mutation.id})`,
 
       scalar: multiplyVelocity.scalar + mutation.amount
-    }
+    };
   }
 
   if (mutation.type === "NoopMutation") {
@@ -1052,7 +1108,7 @@ function applyMutation(entity: Entity, mutation: Mutation): Entity {
     return {
       type: "noop",
       id: entity.id
-    }
+    };
   }
 
   throw new Error(`Unimplemented mutation ${(mutation as Mutation).type}`);
@@ -1069,7 +1125,7 @@ function chooseMutation(
     return {
       id: seed.toString(),
       type: "ConvertToNoopMutation"
-    }
+    };
   }
 
   if (entity.type === "sequence") {
@@ -1160,7 +1216,7 @@ function chooseMutation(
     };
   }
 
-  if ( entity.type === "inputConditional") {
+  if (entity.type === "inputConditional") {
     const types = ["SwitchMutation", "ReplaceMutation"];
 
     const mutationType = random.pick(types);
@@ -1232,7 +1288,67 @@ function mutate(keys: string[], random: Random, entity: Entity): Entity {
   return mapTree(entity, node => mutateNode(keys, random, node));
 }
 
-export function tumbler(code: Entity): Entity {
+function removeCodeThatDoesNotHelpFitness(
+  code: Entity,
+  scenarios: Scenario[],
+  actor: string,
+  input: Input
+): Entity {
+  // for each node in the tree, try replacing it with a noop
+  // if the fitness of the noop is better than the old node, replace it permanently and restart
+  // continue until all nodes contribute to fitness
+  //
+  const fitnessChecker = makeFitnessChecker(scenarios);
+
+  let baseFitness = fitnessChecker(input, code, actor).fitness;
+
+  let result = code;
+
+  function doTheThing(node: Entity) {
+    const possiblyThis = mapTree(result, n => {
+      if (node.id === n.id) {
+        return { type: "noop", id: Math.random().toString() };
+      } else {
+        return n;
+      }
+    });
+
+    const newFitness = fitnessChecker(input, possiblyThis, actor).fitness;
+
+    if (newFitness < baseFitness) {
+      baseFitness = newFitness;
+      return possiblyThis;
+    }
+
+    return null;
+  }
+
+  let progress = true;
+
+  while (progress) {
+    const newTree = selectNode(result, doTheThing);
+
+    if (newTree) {
+      result = newTree;
+    }
+
+    console.log(baseFitness);
+    progress = !!newTree;
+  }
+
+  return result;
+}
+
+export function tumbler(
+  code: Entity,
+  scenarios: Scenario[] = [],
+  input?: Input,
+  actor = ""
+): Entity {
+  if (scenarios.length > 0 && input) {
+    code = removeCodeThatDoesNotHelpFitness(code, scenarios, actor, input);
+  }
+
   return mapTree(code, node => {
     if (isLeaf(node)) {
       return node;
@@ -1244,14 +1360,26 @@ export function tumbler(code: Entity): Entity {
         };
       }
 
-      if (node.type === "sequence") {
-        return {
+      if (
+        node.type === "sequence" &&
+        node.children.find(node => node.type === "sequence")
+      ) {
+        node = {
           ...node,
           id: "tumbler-flatten",
-          children: flatten(node.children.map(node =>
-            node.type === "sequence" ? node.children : [node]
-          ))
-        }
+          children: flatten(
+            node.children.map(
+              node => (node.type === "sequence" ? node.children : [node])
+            )
+          )
+        };
+      }
+
+      if (node.type === "sequence") {
+        node = {
+          ...node,
+          children: node.children.filter(node => node.type !== "noop")
+        };
       }
 
       return node;
@@ -1259,7 +1387,11 @@ export function tumbler(code: Entity): Entity {
   });
 }
 
-function setErrorLevel(errorLevels: ErrorLevels, actor: string, scenarioErrorLevels: ScenarioErrorLevels) {
+function setErrorLevel(
+  errorLevels: ErrorLevels,
+  actor: string,
+  scenarioErrorLevels: ScenarioErrorLevels
+) {
   if (!errorLevels.hasOwnProperty(actor)) {
     errorLevels[actor] = {};
   }
@@ -1277,47 +1409,58 @@ export function helixPi(
   const results: Output = { entities: {}, errorLevels: {}, positions: {} };
 
   Object.keys(input.actors).forEach(actor => {
-      const scenariosForActor = input.scenarios.filter(
-        scenario => actor in scenario.actors
-      );
+    const scenariosForActor = input.scenarios.filter(
+      scenario => actor in scenario.actors
+    );
 
     if (scenariosForActor.length === 1) {
-        console.log("Generating for", actor);
-        const scenario = scenariosForActor[0];
+      console.log("Generating for", actor);
+      const scenario = scenariosForActor[0];
 
-        if (!(actor in scenario.actors)) {
-          return;
-        }
+      if (!(actor in scenario.actors)) {
+        return;
+      }
 
-        const fitness = makeFitnessChecker([scenario]);
-        let previousSolutions: Entity[] = [];
+      const fitness = makeFitnessChecker([scenario]);
+      let previousSolutions: Entity[] = [];
 
-        if (previousOutput && previousOutput.entities[actor]) {
-          previousSolutions = [previousOutput.entities[actor]];
-        }
+      if (previousOutput && previousOutput.entities[actor]) {
+        previousSolutions = [previousOutput.entities[actor]];
+      }
 
-        const bestSolutions = generateEntitiesForScenario(
-          input,
-          fitness,
-          actor,
-          previousSolutions,
-          seed
-        );
+      const bestSolutions = generateEntitiesForScenario(
+        input,
+        fitness,
+        actor,
+        previousSolutions,
+        seed
+      );
 
-        results.entities[actor] = tumbler(bestSolutions[0].entity);
-        setErrorLevel(results.errorLevels, actor, {[scenario.id]: bestSolutions[0].fitness});
-        results.positions[actor] = bestSolutions[0].positions;
+      console.log("size before tumbler", findSize(bestSolutions[0].entity));
+      results.entities[actor] = tumbler(
+        bestSolutions[0].entity,
+        [scenario],
+        input,
+        actor
+      );
+      console.log("size after tumbler", findSize(results.entities[actor]));
+
+      setErrorLevel(results.errorLevels, actor, {
+        [scenario.id]: bestSolutions[0].fitness
+      });
+      results.positions[actor] = bestSolutions[0].positions;
     } else {
-        console.log("Generating for", actor);
-        const random = new Random(Random.engines.mt19937().seed(seed));
+      console.log("Generating for", actor);
+      const random = new Random(Random.engines.mt19937().seed(seed));
 
-        let previousSolutions: Entity[] = [];
+      let previousSolutions: Entity[] = [];
 
-        if (previousOutput && previousOutput.entities[actor]) {
-          previousSolutions = [previousOutput.entities[actor]];
-        }
+      if (previousOutput && previousOutput.entities[actor]) {
+        previousSolutions = [previousOutput.entities[actor]];
+      }
 
-        const entitiesForEachScenario = flatten(scenariosForActor.map(
+      const entitiesForEachScenario = flatten(
+        scenariosForActor.map(
           scenario =>
             console.log("scenario:", scenario.name) ||
             generateEntitiesForScenario(
@@ -1327,24 +1470,32 @@ export function helixPi(
               previousSolutions,
               random.integer((-2) ** 53, 2 ** 53)
             )
-        ));
+        )
+      );
 
-        console.log("final solution:", previousSolutions, previousOutput);
-        const solutions = generateEntitiesForScenario(
-          input,
-          makeFitnessChecker(scenariosForActor),
-          actor,
-          previousSolutions.concat(
-            entitiesForEachScenario.map(
-              entityWithFitness => entityWithFitness.entity
-            )
-          ),
-          random.integer((-2) ** 53, 2 ** 53)
-        );
+      console.log("final solution:", previousSolutions, previousOutput);
+      const solutions = generateEntitiesForScenario(
+        input,
+        makeFitnessChecker(scenariosForActor),
+        actor,
+        previousSolutions.concat(
+          entitiesForEachScenario.map(
+            entityWithFitness => entityWithFitness.entity
+          )
+        ),
+        random.integer((-2) ** 53, 2 ** 53)
+      );
 
-        results.entities[actor] = tumbler(solutions[0].entity);
-        setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
-        results.positions[actor] = solutions[0].positions;
+      console.log("size before tumbler", findSize(solutions[0].entity));
+      results.entities[actor] = tumbler(
+        solutions[0].entity,
+        scenariosForActor,
+        input,
+        actor
+      );
+      console.log("size after tumbler", findSize(results.entities[actor]));
+      setErrorLevel(results.errorLevels, actor, solutions[0].errorLevels);
+      results.positions[actor] = solutions[0].positions;
     }
   });
 

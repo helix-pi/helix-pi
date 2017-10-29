@@ -1,6 +1,6 @@
 import * as assert from "assert";
 
-import { tumbler, Entity } from "../src";
+import { tumbler, Entity, Scenario } from "../src";
 
 describe("tumbler", () => {
   it("removes dead code", () => {
@@ -124,7 +124,7 @@ describe("tumbler", () => {
                     x: -0.05,
                     y: -0.8
                   }
-                },
+                }
               ]
             }
           ]
@@ -148,5 +148,67 @@ describe("tumbler", () => {
     };
 
     assert.deepEqual(tumbler(code), expected);
+  });
+
+  it("removes code that does not improve the individual's fitness", () => {
+    const scenario: Scenario = {
+      name: "moves right",
+      id: "lol",
+      input: {},
+      actors: {
+        kevin: [
+          { frame: 0, position: { x: 0, y: 0 } },
+          { frame: 1, position: { x: 1, y: 0 } }
+        ]
+      }
+    };
+
+    const code: Entity = {
+      type: "sequence",
+      id: "0",
+      children: [
+        {
+          type: "move",
+          id: "1",
+          amount: 1,
+          direction: "right"
+        },
+        {
+          type: "move",
+          id: "2",
+          amount: 0.1,
+          direction: "up"
+        }
+      ]
+    };
+
+    const input = {
+      actors: {
+        kevin: {
+          id: "kev",
+          name: "kevin",
+          width: 50,
+          height: 50,
+          color: "white"
+        }
+      },
+      scenarios: [scenario],
+      keys: []
+    };
+
+    const tumbled = tumbler(code, [scenario], input, "kevin");
+
+    assert.deepEqual(tumbled, {
+      type: "sequence",
+      id: "0",
+      children: [
+        {
+          type: "move",
+          id: "1",
+          amount: 1,
+          direction: "right"
+        }
+      ]
+    });
   });
 });
